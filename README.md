@@ -18,6 +18,7 @@ A modern Progressive Web App (PWA) for banking built with React, Vite, and Supab
   - [🏗 Building for Production](#-building-for-production)
   - [☁️ Deployment](#️-deployment)
     - [Netlify](#netlify)
+  - [📈 Contribution Tracking](#-contribution-tracking)
     - [Vercel](#vercel)
     - [GitHub Pages](#github-pages)
   - [🤝 Contributing](#-contributing)
@@ -344,6 +345,109 @@ Contributions are welcome! Please follow these steps:
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a pull request
+
+## 📈 Contribution Tracking
+
+This project follows a structured Git workflow to maintain consistent contributions and track progress effectively.
+
+### Development Strategy
+
+We maintain a consistent development rhythm with approximately 5 meaningful contributions per day during active development periods. Our approach includes:
+
+- Small, focused commits that represent single logical changes
+- Clear, descriptive commit messages following conventional commit format
+- Regular feature branching for isolated development
+- Daily progress tracking
+
+For detailed guidelines on our development strategy, see [DEVELOPMENT_STRATEGY.md](DEVELOPMENT_STRATEGY.md).
+
+### Contribution Log
+
+All significant contributions are tracked in [CONTRIBUTION_LOG.md](CONTRIBUTION_LOG.md), which documents daily activities and progress.
+
+### Git Aliases
+
+To streamline Git operations, we use helpful aliases documented in [GIT_ALIASES.md](GIT_ALIASES.md).
+
+### Contribution Scripts
+
+For demonstration purposes, we've included several scripts to help with consistent contributions:
+
+#### Simulation Script
+
+```bash
+npm run simulate-contributions
+```
+
+>Note: The simulation script is commented out by default to prevent accidental execution. Uncomment the `simulateContributions()` call in `scripts/simulate_contributions.cjs` to run the simulation.
+
+#### Contribution Statistics
+
+```bash
+npm run contribution-stats
+```
+
+Shows statistics about your contributions including total commits, recent activity, and daily averages.
+
+#### Changelog Generator
+
+```bash
+npm run generate-changelog
+```
+
+Automatically generates a `CHANGELOG.md` file from your Git commit history, grouping commits by type (features, fixes, etc.) following conventional commit format.
+
+#### Daily Log Tracker
+
+```bash
+npm run daily-log
+```
+
+Creates a daily log file in the `daily_logs/` directory to help track your contributions. You can also add completed contributions to today's log:
+
+```bash
+npm run daily-log add "Implemented user authentication flow"
+npm run daily-log add "Fixed login redirect issue"
+npm run daily-log add "Updated documentation for API endpoints"
+```
+
+This helps maintain accountability and provides a clear record of daily progress.
+
+#### Git Workflow Helper
+
+We've included helper scripts for both Bash (`scripts/git-workflow-helper.sh`) and PowerShell (`scripts/git-workflow-helper.ps1`) to simplify common Git operations:
+
+##### Bash (Linux/macOS)
+```bash
+# Create a new feature branch
+./scripts/git-workflow-helper.sh feature new-feature-name
+
+# Make a conventional commit
+./scripts/git-workflow-helper.sh commit feat "add new authentication flow"
+
+# Publish current branch
+./scripts/git-workflow-helper.sh publish
+
+# Show contribution statistics
+./scripts/git-workflow-helper.sh stats
+```
+
+##### PowerShell (Windows)
+```powershell
+# Create a new feature branch
+.\scripts\git-workflow-helper.ps1 feature new-feature-name
+
+# Make a conventional commit
+.\scripts\git-workflow-helper.ps1 commit feat "add new authentication flow"
+
+# Publish current branch
+.\scripts\git-workflow-helper.ps1 publish
+
+# Show contribution statistics
+.\scripts\git-workflow-helper.ps1 stats
+```
+
+These scripts help maintain consistency in branch naming, commit messages, and publishing workflow.
 
 ## 📄 License
 

@@ -12,7 +12,8 @@
     "simulate-contributions": "node scripts/simulate_contributions.cjs",
     "contribution-stats": "node scripts/contribution_stats.cjs",
     "generate-changelog": "node scripts/generate-changelog.cjs",
-    "daily-log": "node scripts/daily-log.cjs"
+    "daily-log": "node scripts/daily-log.cjs",
+    "commit-check": "node scripts/contribution_stats.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.76.1",

@@ -119,6 +119,7 @@ function main() {
   console.log('3. Create feature branches for new work');
   console.log('4. Push changes regularly to backup your work');
   console.log('5. Document significant changes in CONTRIBUTION_LOG.md');
+  console.log('6. Use conventional commit format for clear history');
 }
 
 // Run the script

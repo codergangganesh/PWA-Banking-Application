@@ -26,14 +26,20 @@ A modern Progressive Web App (PWA) for banking built with React, Vite, and Supab
 
 ## ✨ Features
 
-- 🔐 Secure authentication with Supabase
-- 💳 Account dashboard with transaction history
-- 📊 Financial data visualization
+- 🔐 Secure authentication with Supabase Auth (email/password, session management)
+- 💳 Account dashboard with real-time transaction history
+- 📊 Financial data visualization with interactive charts
 - 📱 Fully responsive design (mobile, tablet, desktop)
-- ⚡ Fast performance with Vite
+- ⚡ Fast performance with Vite bundling
 - 🌐 Progressive Web App support (installable on devices)
 - 🎨 Modern UI with Tailwind CSS
 - 📈 Data visualization with Recharts
+- 💰 Recurring payments management
+- 📅 Bill reminders with due date tracking
+- 📤 Import/Export transaction data (JSON format)
+- 🔄 Real-time data synchronization with Supabase
+- 🔒 Row Level Security ensuring data isolation
+- 📦 Local data storage with IndexedDB fallback
 
 ## 🛠 Tech Stack
 
@@ -51,10 +57,28 @@ A modern Progressive Web App (PWA) for banking built with React, Vite, and Supab
 src/
 ├── components/         # Reusable UI components
 ├── services/           # Business logic and API integrations
+│   ├── AuthContext.jsx      # Authentication context and hooks
+│   ├── supabaseClient.js    # Supabase client initialization
+│   └── supabaseDataClient.js # Database operations and data fetching
 ├── App.jsx             # Main application component
 ├── main.jsx            # Application entry point
 └── index.css           # Global styles
 ```
+
+## 🔐 Authentication
+
+The application uses Supabase Auth for secure user authentication with the following features:
+- Email and password authentication
+- Session management with automatic token refresh
+- Password reset functionality
+- User metadata updates
+- Protected routes and components
+
+Authentication is implemented using React Context API in [AuthContext.jsx](src/services/AuthContext.jsx) which provides:
+- `useAuth()` hook for accessing authentication state and methods
+- Session persistence across page reloads
+- Automatic session restoration on app load
+- Protected route handling
 
 ## 📋 Prerequisites
 
@@ -99,6 +123,12 @@ To get these values:
 2. Go to Project Settings > API
 3. Copy the Project URL and anon public key
 
+**Important Notes:**
+- Environment variables must be prefixed with `VITE_` to be accessible in the browser
+- The anon key allows access to Supabase services as an anonymous user
+- Never expose the service role key in client-side code
+- For production deployments, configure environment variables in your hosting platform
+
 ## 📋 Supabase Database Setup
 
 After creating your Supabase project, you need to set up the database tables. Run the following SQL commands in your Supabase SQL editor:
@@ -132,11 +162,121 @@ CREATE POLICY "Users can update their own account" ON accounts
   FOR UPDATE USING (owner_email = auth.jwt() ->> 'email');
 ```
 
-### Existing Tables (Transactions, Recurring Payments, Bill Reminders)
-The application also uses the following tables which should already be set up:
-- `transactions`
-- `recurring_payments`
-- `bill_reminders`
+### Transactions Table
+```sql
+-- Create the transactions table
+CREATE TABLE transactions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  owner_email TEXT NOT NULL,
+  type TEXT CHECK (type IN ('income', 'expense')) NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  description TEXT,
+  category TEXT,
+  date DATE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create indexes for faster queries
+CREATE INDEX idx_transactions_owner_email ON transactions (owner_email);
+CREATE INDEX idx_transactions_date ON transactions (date);
+
+-- Enable Row Level Security
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for transactions table
+CREATE POLICY "Users can view their own transactions" ON transactions
+  FOR SELECT USING (owner_email = auth.jwt() ->> 'email');
+
+CREATE POLICY "Users can insert their own transactions" ON transactions
+  FOR INSERT WITH CHECK (owner_email = auth.jwt() ->> 'email');
+
+CREATE POLICY "Users can update their own transactions" ON transactions
+  FOR UPDATE USING (owner_email = auth.jwt() ->> 'email');
+
+CREATE POLICY "Users can delete their own transactions" ON transactions
+  FOR DELETE USING (owner_email = auth.jwt() ->> 'email');
+```
+
+### Recurring Payments Table
+```sql
+-- Create the recurring_payments table
+CREATE TABLE recurring_payments (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  owner_email TEXT NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  description TEXT,
+  category TEXT,
+  frequency TEXT CHECK (frequency IN ('weekly', 'monthly', 'quarterly', 'yearly')) NOT NULL,
+  next_date DATE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create indexes for faster queries
+CREATE INDEX idx_recurring_payments_owner_email ON recurring_payments (owner_email);
+CREATE INDEX idx_recurring_payments_next_date ON recurring_payments (next_date);
+
+-- Enable Row Level Security
+ALTER TABLE recurring_payments ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for recurring_payments table
+CREATE POLICY "Users can view their own recurring payments" ON recurring_payments
+  FOR SELECT USING (owner_email = auth.jwt() ->> 'email');
+
+CREATE POLICY "Users can insert their own recurring payments" ON recurring_payments
+  FOR INSERT WITH CHECK (owner_email = auth.jwt() ->> 'email');
+
+CREATE POLICY "Users can update their own recurring payments" ON recurring_payments
+  FOR UPDATE USING (owner_email = auth.jwt() ->> 'email');
+
+CREATE POLICY "Users can delete their own recurring payments" ON recurring_payments
+  FOR DELETE USING (owner_email = auth.jwt() ->> 'email');
+```
+
+### Bill Reminders Table
+```sql
+-- Create the bill_reminders table
+CREATE TABLE bill_reminders (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  owner_email TEXT NOT NULL,
+  description TEXT,
+  amount DECIMAL(10,2) NOT NULL,
+  due_date DATE NOT NULL,
+  category TEXT,
+  is_paid BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create indexes for faster queries
+CREATE INDEX idx_bill_reminders_owner_email ON bill_reminders (owner_email);
+CREATE INDEX idx_bill_reminders_due_date ON bill_reminders (due_date);
+
+-- Enable Row Level Security
+ALTER TABLE bill_reminders ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for bill_reminders table
+CREATE POLICY "Users can view their own bill reminders" ON bill_reminders
+  FOR SELECT USING (owner_email = auth.jwt() ->> 'email');
+
+CREATE POLICY "Users can insert their own bill reminders" ON bill_reminders
+  FOR INSERT WITH CHECK (owner_email = auth.jwt() ->> 'email');
+
+CREATE POLICY "Users can update their own bill reminders" ON bill_reminders
+  FOR UPDATE USING (owner_email = auth.jwt() ->> 'email');
+
+CREATE POLICY "Users can delete their own bill reminders" ON bill_reminders
+  FOR DELETE USING (owner_email = auth.jwt() ->> 'email');
+```
+
+### Data Relationships and Flow
+
+The application maintains data consistency through the following relationships:
+- Each user has one account record in the `accounts` table
+- All financial transactions are stored in the `transactions` table, linked to the user's account
+- Recurring payments in `recurring_payments` automatically generate transactions when processed
+- Bill reminders in `bill_reminders` can be converted to transactions when marked as paid
+- All tables use Row Level Security to ensure users only access their own data
+- Account balance is calculated from the sum of all transactions for that account
 
 Make sure Row Level Security is enabled for all tables with appropriate policies to ensure users can only access their own data.
 

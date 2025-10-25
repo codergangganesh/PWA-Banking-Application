@@ -13,6 +13,7 @@ A modern Progressive Web App (PWA) for banking built with React, Vite, and Supab
   - [📋 Prerequisites](#-prerequisites)
   - [🚀 Installation](#-installation)
   - [🔐 Environment Variables](#-environment-variables)
+  - [📋 Supabase Database Setup](#-supabase-database-setup)
   - [🧪 Development](#-development)
   - [🏗 Building for Production](#-building-for-production)
   - [☁️ Deployment](#️-deployment)
@@ -98,6 +99,47 @@ To get these values:
 2. Go to Project Settings > API
 3. Copy the Project URL and anon public key
 
+## 📋 Supabase Database Setup
+
+After creating your Supabase project, you need to set up the database tables. Run the following SQL commands in your Supabase SQL editor:
+
+### Accounts Table
+```sql
+-- Create the accounts table
+CREATE TABLE accounts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  owner_email TEXT NOT NULL,
+  account_number TEXT,
+  balance DECIMAL(10,2) DEFAULT 0.00,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create index on owner_email for faster queries
+CREATE INDEX idx_accounts_owner_email ON accounts (owner_email);
+
+-- Enable Row Level Security
+ALTER TABLE accounts ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for accounts table
+CREATE POLICY "Users can view their own account" ON accounts
+  FOR SELECT USING (owner_email = auth.jwt() ->> 'email');
+
+CREATE POLICY "Users can insert their own account" ON accounts
+  FOR INSERT WITH CHECK (owner_email = auth.jwt() ->> 'email');
+
+CREATE POLICY "Users can update their own account" ON accounts
+  FOR UPDATE USING (owner_email = auth.jwt() ->> 'email');
+```
+
+### Existing Tables (Transactions, Recurring Payments, Bill Reminders)
+The application also uses the following tables which should already be set up:
+- `transactions`
+- `recurring_payments`
+- `bill_reminders`
+
+Make sure Row Level Security is enabled for all tables with appropriate policies to ensure users can only access their own data.
+
 ## 🧪 Development
 
 Start the development server:
@@ -152,7 +194,6 @@ npm run preview
    ```bash
    npm run deploy
    ```
-
 
 ## 🤝 Contributing
 

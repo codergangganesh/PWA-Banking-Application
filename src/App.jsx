@@ -2,10 +2,26 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { AuthProvider, useAuth } from './services/AuthContext';
+import { 
+  getTransactions, 
+  addTransaction as addSupabaseTransaction, 
+  getRecurringPayments as getSupabaseRecurringPayments,
+  addRecurringPayment as addSupabaseRecurringPayment,
+  getBillReminders as getSupabaseBillReminders,
+  addBillReminder as addSupabaseBillReminder,
+  updateRecurringPayment,
+  updateBillReminder,
+  deleteRecurringPayment,
+  deleteBillReminder,
+  getAccountInfo as getSupabaseAccountInfo,
+  createAccount as createSupabaseAccount,
+  updateAccount as updateSupabaseAccount
+} from './services/supabaseDataClient';
 import SplashScreen from './components/SplashScreen';
 import LoginScreen from './components/LoginScreen';
 import SignupScreen from './components/SignupScreen';
 import HomeScreen from './components/HomeScreen';
+import ProfilePage from './components/ProfilePage';
 
 /*********************************************************
  FIX: Removed react-dom/client `createRoot` usage.
@@ -185,7 +201,7 @@ function Modal({ open, onClose, title, children, danger = false }) {
 /******************** Main App ****************************/
 function AppContent() {
   const [splashComplete, setSplashComplete] = useState(false);
-  const [currentPage, setCurrentPage] = useState('splash'); // splash, home, login, signup, dashboard, settings, forgot, recurring, bills, statements
+  const [currentPage, setCurrentPage] = useState('splash'); // splash, home, login, signup, dashboard, settings, forgot, recurring, bills, statements, profile
   const [transactions, setTransactions] = useState([]); // empty for new users
   const [recurringPayments, setRecurringPayments] = useState([]);
   const [billReminders, setBillReminders] = useState([]);
@@ -193,37 +209,151 @@ function AppContent() {
   const [showDelete, setShowDelete] = useState(false);
   const [confirmPw, setConfirmPw] = useState("");
   const [dateRange, setDateRange] = useState({ start: new Date(Date.now() - 30*24*60*60*1000).toISOString().slice(0, 10), end: todayISO() });
+  const [theme, setTheme] = useState('light'); // 'light' or 'dark'
+  const [profileImage, setProfileImage] = useState(null);
+  const [showBalance, setShowBalance] = useState(true);
+  const [balance, setBalance] = useState(0);
+  const [accountNumber, setAccountNumber] = useState('');
+  const [accountId, setAccountId] = useState(null); // To store the account ID from Supabase
+  const [showBalancePopup, setShowBalancePopup] = useState(false);
+  const [newBalance, setNewBalance] = useState('');
+  const [dataSynced, setDataSynced] = useState(false); // New state to track if data has been synced
   
   const { user, signOut } = useAuth();
 
+  // Debugging - log state changes
   useEffect(() => {
-    openDB()
-      .catch((err) => {
-        console.error(err);
-        alert("IndexedDB not available. The app needs a modern browser.");
-      });
+    console.log('App state changed:', { currentPage, splashComplete, user });
+  }, [currentPage, splashComplete, user]);
+
+  // Initialize theme from localStorage or system preference
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme');
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const savedProfileImage = localStorage.getItem('profileImage');
+    
+    if (savedTheme) {
+      setTheme(savedTheme);
+    } else if (systemPrefersDark) {
+      setTheme('dark');
+    }
+    
+    if (savedProfileImage) {
+      setProfileImage(savedProfileImage);
+    }
   }, []);
 
-  // Update page based on auth state
+  // Apply theme to document
   useEffect(() => {
-    if (splashComplete) {
-      if (user) {
-        setCurrentPage('dashboard');
-      } else {
-        setCurrentPage('home');
-      }
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  // Save profile image to localStorage
+  useEffect(() => {
+    if (profileImage) {
+      localStorage.setItem('profileImage', profileImage);
+    } else {
+      localStorage.removeItem('profileImage');
+    }
+  }, [profileImage]);
+
+  // Initialize database
+  useEffect(() => {
+    openDB().catch(console.error);
+  }, []);
+
+  // Fetch user data when authenticated
+  useEffect(() => {
+    if (user && splashComplete) {
+      fetchUserData();
     }
   }, [user, splashComplete]);
 
+  // Fetch user data from Supabase
+  const fetchUserData = async () => {
+    if (!user) return;
+    
+    try {
+      // Fetch transactions from Supabase
+      const supabaseTransactions = await getTransactions(user.email);
+      setTransactions(supabaseTransactions);
+      
+      // Fetch recurring payments from Supabase
+      const supabaseRecurringPayments = await getSupabaseRecurringPayments(user.email);
+      setRecurringPayments(supabaseRecurringPayments);
+      
+      // Fetch bill reminders from Supabase
+      const supabaseBillReminders = await getSupabaseBillReminders(user.email);
+      setBillReminders(supabaseBillReminders);
+      
+      // Fetch account information from Supabase
+      const accountInfo = await getSupabaseAccountInfo(user.email);
+      if (accountInfo) {
+        setBalance(accountInfo.balance || 0);
+        setAccountNumber(accountInfo.account_number || '');
+        setAccountId(accountInfo.id);
+      } else {
+        // If no account info exists, calculate balance from transactions and show the popup to create it
+        const transactionBalance = supabaseTransactions.reduce((sum, transaction) => {
+          return sum + transaction.amount;
+        }, 0);
+        
+        setBalance(transactionBalance);
+        setShowBalancePopup(true);
+      }
+      
+      // Sync local data to Supabase if not already done
+      if (!dataSynced) {
+        // Get local data
+        const localTransactions = await dbGetAllByOwner(user.email);
+        const localRecurringPayments = await getRecurringPayments(user.email);
+        const localBillReminders = await getBillReminders(user.email);
+        
+        // If there's local data, sync it to Supabase
+        if (localTransactions.length > 0 || localRecurringPayments.length > 0 || localBillReminders.length > 0) {
+          await syncLocalDataToSupabase(
+            user.email,
+            localTransactions,
+            localRecurringPayments,
+            localBillReminders
+          );
+          setDataSynced(true);
+          
+          // Clear local data after sync
+          await dbClearOwner(user.email);
+        }
+      }
+      
+      setCurrentPage('dashboard');
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      setCurrentPage('dashboard');
+    }
+  };
+
+  // Handle profile image change
+  const handleProfileImageChange = (imageData) => {
+    setProfileImage(imageData);
+    // In a real app, you would save this to user metadata
+  };
+
   const handleLoginSuccess = () => {
+    console.log('Login successful, setting page to dashboard');
     setCurrentPage('dashboard');
   };
 
   const handleSignupSuccess = () => {
+    console.log('Signup successful, setting page to dashboard');
     setCurrentPage('dashboard');
   };
 
   const handleLogoutConfirmed = async () => {
+    console.log('Logout confirmed');
     setConfirmPw("");
     setShowLogout(false);
     await signOut();
@@ -242,17 +372,33 @@ function AppContent() {
 
   const addTransaction = async ({ type, amount, description, category }) => {
     if (!user) return;
-    const value = {
-      ownerEmail: user.email,
-      type, // "income" | "expense"
+    
+    const transaction = {
+      owner_email: user.email,
+      type,
       amount: Number(amount) * (type === "expense" ? -1 : 1),
       description,
       category,
       date: todayISO(),
     };
-    await dbWrite("transactions", value);
-    const updated = await dbGetAllByOwner(user.email);
-    setTransactions(updated);
+    
+    try {
+      // Add to Supabase
+      const newTransaction = await addSupabaseTransaction(transaction);
+      if (newTransaction) {
+        setTransactions(prev => [newTransaction, ...prev]);
+        // Update balance
+        if (accountId) {
+          const amountValue = Number(amount) * (type === "expense" ? -1 : 1);
+          const newBalance = balance + amountValue;
+          setBalance(newBalance);
+          // Update balance in Supabase
+          await updateSupabaseAccount(accountId, { balance: newBalance });
+        }
+      }
+    } catch (error) {
+      console.error('Error adding transaction:', error);
+    }
   };
 
   // Import/Export (JSON)
@@ -282,6 +428,18 @@ function AppContent() {
         }
         const updated = await dbGetAllByOwner(user.email);
         setTransactions(updated);
+        
+        // Recalculate balance based on imported transactions
+        if (accountId) {
+          const total = updated.reduce((sum, transaction) => {
+            return sum + transaction.amount;
+          }, balance); // Start with current balance
+          
+          setBalance(total);
+          // Update balance in Supabase
+          await updateSupabaseAccount(accountId, { balance: total });
+        }
+        
         alert("Transactions imported");
       } else {
         alert("Invalid backup format");
@@ -294,25 +452,40 @@ function AppContent() {
   // Recurring Payments
   const addRecurringPayment = async ({ amount, description, category, frequency, nextDate }) => {
     if (!user) return;
+    
     const payment = {
-      ownerEmail: user.email,
+      owner_email: user.email,
       amount: Number(amount),
       description,
       category,
-      frequency, // 'weekly', 'monthly', 'quarterly', 'yearly'
-      nextDate,
-      createdAt: Date.now(),
+      frequency,
+      next_date: nextDate,
+      created_at: new Date().toISOString(),
     };
-    await dbWrite("recurringPayments", payment);
-    const updated = await getRecurringPayments(user.email);
-    setRecurringPayments(updated);
+    
+    try {
+      // Add to Supabase
+      const newPayment = await addSupabaseRecurringPayment(payment);
+      if (newPayment) {
+        setRecurringPayments(prev => [...prev, newPayment]);
+      }
+    } catch (error) {
+      console.error('Error adding recurring payment:', error);
+    }
   };
   
   const deleteRecurringPayment = async (id) => {
     if (!user) return;
-    await dbDelete("recurringPayments", id);
-    const updated = await getRecurringPayments(user.email);
-    setRecurringPayments(updated);
+    
+    try {
+      // Delete from Supabase
+      const success = await deleteRecurringPayment(id);
+      if (success) {
+        setRecurringPayments(prev => prev.filter(p => p.id !== id));
+      }
+    } catch (error) {
+      console.error('Error deleting recurring payment:', error);
+    }
   };
   
   const processRecurringPayment = async (payment) => {
@@ -325,7 +498,7 @@ function AppContent() {
     });
     
     // Update next payment date based on frequency
-    const nextDate = new Date(payment.nextDate);
+    const nextDate = new Date(payment.next_date);
     switch(payment.frequency) {
       case 'weekly':
         nextDate.setDate(nextDate.getDate() + 7);
@@ -343,34 +516,53 @@ function AppContent() {
     
     const updatedPayment = {
       ...payment,
-      nextDate: nextDate.toISOString().slice(0, 10)
+      next_date: nextDate.toISOString().slice(0, 10)
     };
     
-    await dbWrite("recurringPayments", updatedPayment);
-    const updated = await getRecurringPayments(user.email);
-    setRecurringPayments(updated);
+    try {
+      // Update in Supabase
+      const result = await updateRecurringPayment(payment.id, {
+        next_date: updatedPayment.next_date
+      });
+      if (result) {
+        setRecurringPayments(prev => 
+          prev.map(p => p.id === payment.id ? result : p)
+        );
+      }
+    } catch (error) {
+      console.error('Error updating recurring payment:', error);
+    }
   };
-  
+
   // Bill Reminders
   const addBillReminder = async ({ description, amount, dueDate, category }) => {
     if (!user) return;
+    
     const reminder = {
-      ownerEmail: user.email,
+      owner_email: user.email,
       description,
       amount: Number(amount),
-      dueDate,
+      due_date: dueDate,
       category,
-      isPaid: false,
-      createdAt: Date.now(),
+      is_paid: false,
+      created_at: new Date().toISOString(),
     };
-    await dbWrite("billReminders", reminder);
-    const updated = await getBillReminders(user.email);
-    setBillReminders(updated);
+    
+    try {
+      // Add to Supabase
+      const newReminder = await addSupabaseBillReminder(reminder);
+      if (newReminder) {
+        setBillReminders(prev => [...prev, newReminder]);
+      }
+    } catch (error) {
+      console.error('Error adding bill reminder:', error);
+    }
   };
   
   const markBillAsPaid = async (id) => {
     if (!user) return;
-    const bill = await dbRead("billReminders", id);
+    
+    const bill = billReminders.find(b => b.id === id);
     if (!bill) return;
     
     // Add transaction for the bill payment
@@ -382,17 +574,33 @@ function AppContent() {
     });
     
     // Update bill status
-    const updatedBill = { ...bill, isPaid: true };
-    await dbWrite("billReminders", updatedBill);
-    const updated = await getBillReminders(user.email);
-    setBillReminders(updated);
+    const updatedBill = { ...bill, is_paid: true };
+    
+    try {
+      // Update in Supabase
+      const result = await updateBillReminder(id, { is_paid: true });
+      if (result) {
+        setBillReminders(prev => 
+          prev.map(b => b.id === id ? result : b)
+        );
+      }
+    } catch (error) {
+      console.error('Error updating bill reminder:', error);
+    }
   };
   
   const deleteBillReminder = async (id) => {
     if (!user) return;
-    await dbDelete("billReminders", id);
-    const updated = await getBillReminders(user.email);
-    setBillReminders(updated);
+    
+    try {
+      // Delete from Supabase
+      const success = await deleteBillReminder(id);
+      if (success) {
+        setBillReminders(prev => prev.filter(b => b.id !== id));
+      }
+    } catch (error) {
+      console.error('Error deleting bill reminder:', error);
+    }
   };
   
   // Account Statement
@@ -565,18 +773,351 @@ function AppContent() {
             ))}
           </div>
         ) : (
-          <Card className="text-center py-8 text-gray-500 dark:text-gray-400">
-            <p>No recurring payments set up yet.</p>
-            <button 
-              onClick={() => setShowAddForm(true)}
-              className="mt-2 text-indigo-600 dark:text-indigo-400 hover:underline"
-            >
-              Add your first recurring payment
-            </button>
-          </Card>
+          <div className="text-center text-gray-600 dark:text-gray-400">No recurring payments yet.</div>
         )}
       </div>
     );
+  };
+
+
+
+  const StatementsPage = () => {
+    const statement = generateStatement();
+    const totalIncome = statement.reduce((acc, t) => acc + (t.type === "income" ? t.amount : 0), 0);
+    const totalExpenses = statement.reduce((acc, t) => acc + (t.type === "expense" ? t.amount : 0), 0);
+    const balance = totalIncome + totalExpenses;
+
+    const incomeData = statement
+      .filter(t => t.type === "income")
+      .reduce((acc, t) => {
+        const existing = acc.find(d => d.category === t.category);
+        if (existing) {
+          existing.value += t.amount;
+        } else {
+          acc.push({ name: t.category, value: t.amount });
+        }
+        return acc;
+      }, []);
+
+    const expenseData = statement
+      .filter(t => t.type === "expense")
+      .reduce((acc, t) => {
+        const existing = acc.find(d => d.category === t.category);
+        if (existing) {
+          existing.value -= t.amount;
+        } else {
+          acc.push({ name: t.category, value: -t.amount });
+        }
+        return acc;
+      }, []);
+
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold">Account Statement</h2>
+          <button 
+            onClick={() => setCurrentPage("dashboard")}
+            className="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 text-sm"
+          >
+            Back
+          </button>
+        </div>
+        <div className="flex justify-between items-center">
+          <div className="space-y-1">
+            <h3 className="text-lg font-semibold">Income</h3>
+            <div className="text-gray-600 dark:text-gray-400">{formatINR(totalIncome)}</div>
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-lg font-semibold">Expenses</h3>
+            <div className="text-gray-600 dark:text-gray-400">{formatINR(totalExpenses)}</div>
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-lg font-semibold">Balance</h3>
+            <div className="text-gray-600 dark:text-gray-400">{formatINR(balance)}</div>
+          </div>
+        </div>
+        <div className="space-y-3">
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={statement}>
+              <XAxis dataKey="date" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="amount" fill="#8884d8" />
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold">Income Breakdown</h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie data={incomeData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#8884d8" label />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold">Expense Breakdown</h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie data={expenseData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#82ca9d" label />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const SettingsPage = () => {
+    const [newTheme, setNewTheme] = useState(theme);
+    const [newProfileImage, setNewProfileImage] = useState(profileImage);
+    const [newBalance, setNewBalance] = useState(balance);
+    const [showDelete, setShowDelete] = useState(false);
+    const [confirmPw, setConfirmPw] = useState("");
+    const [showLogout, setShowLogout] = useState(false);
+
+    const handleThemeChange = (e) => {
+      setNewTheme(e.target.value);
+    };
+
+    const handleProfileImageChange = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setNewProfileImage(reader.result);
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+
+    const handleBalanceChange = (e) => {
+      setNewBalance(e.target.value);
+    };
+
+    const handleDeleteConfirmed = async () => {
+      if (!user) return;
+      await dbDelete("users", user.email);
+      await dbClearOwner(user.email);
+      setConfirmPw("");
+      setShowDelete(false);
+      setTransactions([]);
+      alert("Your account data has been deleted.");
+    };
+
+    const handleLogoutConfirmed = async () => {
+      setConfirmPw("");
+      setShowLogout(false);
+      await signOut();
+      setCurrentPage("home"); // return to home as requested
+    };
+
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold">Settings</h2>
+          <button 
+            onClick={() => setCurrentPage("dashboard")}
+            className="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 text-sm"
+          >
+            Back
+          </button>
+        </div>
+        <div className="space-y-1">
+          <label className="block text-sm font-medium mb-1">Theme</label>
+          <select 
+            value={newTheme} 
+            onChange={handleThemeChange} 
+            className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+          >
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </div>
+        <div className="space-y-1">
+          <label className="block text-sm font-medium mb-1">Profile Image</label>
+          <input 
+            type="file" 
+            accept="image/*" 
+            onChange={handleProfileImageChange} 
+            className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+          />
+          {newProfileImage && (
+            <img 
+              src={newProfileImage} 
+              alt="Profile" 
+              className="w-24 h-24 rounded-full mt-2"
+            />
+          )}
+        </div>
+        <div className="space-y-1">
+          <label className="block text-sm font-medium mb-1">Balance</label>
+          <input 
+            type="number" 
+            value={newBalance} 
+            onChange={handleBalanceChange} 
+            className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700" 
+            min="0" 
+            step="0.01" 
+          />
+        </div>
+        <div className="flex justify-between items-center">
+          <button 
+            onClick={() => setShowDelete(true)}
+            className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+          >
+            Delete Account
+          </button>
+          <button 
+            onClick={() => setShowLogout(true)}
+            className="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 text-sm"
+          >
+            Logout
+          </button>
+        </div>
+        <Modal open={showDelete} onClose={() => setShowDelete(false)} title="Delete Account" danger>
+          <div className="space-y-3">
+            <p className="text-sm text-gray-600 dark:text-gray-400">Are you sure you want to delete your account? This action is irreversible.</p>
+            <input 
+              type="password" 
+              value={confirmPw} 
+              onChange={(e) => setConfirmPw(e.target.value)} 
+              placeholder="Enter your password" 
+              className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+            />
+            <button 
+              onClick={handleDeleteConfirmed}
+              className="w-full py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              disabled={confirmPw !== user.password}
+            >
+              Confirm Delete
+            </button>
+          </div>
+        </Modal>
+        <Modal open={showLogout} onClose={() => setShowLogout(false)} title="Logout">
+          <div className="space-y-3">
+            <p className="text-sm text-gray-600 dark:text-gray-400">Are you sure you want to logout?</p>
+            <button 
+              onClick={handleLogoutConfirmed}
+              className="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            >
+              Confirm Logout
+            </button>
+          </div>
+        </Modal>
+      </div>
+    );
+  };
+
+  const DashboardPage = () => {
+    const totalIncome = transactions.reduce((acc, t) => acc + (t.type === "income" ? t.amount : 0), 0);
+    const totalExpenses = transactions.reduce((acc, t) => acc + (t.type === "expense" ? t.amount : 0), 0);
+    const balance = totalIncome + totalExpenses;
+
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold">Dashboard</h2>
+          <button 
+            onClick={() => setCurrentPage("settings")}
+            className="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 text-sm"
+          >
+            Settings
+          </button>
+        </div>
+        <div className="flex justify-between items-center">
+          <div className="space-y-1">
+            <h3 className="text-lg font-semibold">Income</h3>
+            <div className="text-gray-600 dark:text-gray-400">{formatINR(totalIncome)}</div>
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-lg font-semibold">Expenses</h3>
+            <div className="text-gray-600 dark:text-gray-400">{formatINR(totalExpenses)}</div>
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-lg font-semibold">Balance</h3>
+            <div className="text-gray-600 dark:text-gray-400">{formatINR(balance)}</div>
+          </div>
+        </div>
+        <div className="space-y-3">
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={transactions}>
+              <XAxis dataKey="date" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="amount" fill="#8884d8" />
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold">Income Breakdown</h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie data={transactions.filter(t => t.type === "income")} dataKey="amount" nameKey="category" cx="50%" cy="50%" outerRadius={80} fill="#8884d8" label />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold">Expense Breakdown</h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie data={transactions.filter(t => t.type === "expense")} dataKey="amount" nameKey="category" cx="50%" cy="50%" outerRadius={80} fill="#82ca9d" label />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-between items-center">
+          <button 
+            onClick={() => setCurrentPage("recurring")}
+            className="px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
+          >
+            Recurring Payments
+          </button>
+          <button 
+            onClick={() => setCurrentPage("bills")}
+            className="px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
+          >
+            Bill Reminders
+          </button>
+          <button 
+            onClick={() => setCurrentPage("statements")}
+            className="px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
+          >
+            Account Statement
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'splash':
+        return <SplashScreen onComplete={() => setSplashComplete(true)} />;
+      case 'home':
+        return <HomeScreen onLogin={() => setCurrentPage('login')} onSignup={() => setCurrentPage('signup')} />;
+      case 'login':
+        return <LoginScreen onSuccess={handleLoginSuccess} />;
+      case 'signup':
+        return <SignupScreen onSuccess={handleSignupSuccess} />;
+      case 'dashboard':
+        return <DashboardPage />;
+      case 'settings':
+        return <SettingsPage />;
+      case 'recurring':
+        return <RecurringPaymentsPage />;
+      case 'bills':
+        return <BillRemindersPage />;
+      case 'statements':
+        return <StatementsPage />;
+      case 'profile':
+        return <ProfilePage />;
+      default:
+        return <div>404 Not Found</div>;
+    }
   };
   
   const BillRemindersPage = () => {
@@ -893,9 +1434,112 @@ function AppContent() {
     );
   };
   
+  const ProfilePage = () => {
+    const [showEdit, setShowEdit] = useState(false);
+    const [newName, setNewName] = useState(user?.user_metadata?.full_name || '');
+    const [newEmail, setNewEmail] = useState(user?.email || '');
+    const [newImage, setNewImage] = useState(profileImage);
+    
+    const handleSave = async () => {
+      // In a real app, you would update the user metadata with Supabase
+      alert("Profile would be updated in a real implementation");
+      setShowEdit(false);
+    };
+    
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold">Profile</h2>
+          <button 
+            onClick={() => setCurrentPage("dashboard")}
+            className="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 text-sm"
+          >
+            Back
+          </button>
+        </div>
+        
+        <Card>
+          <div className="flex flex-col items-center">
+            <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-800 relative">
+              {newImage ? (
+                <img src={newImage} alt="Profile" className="w-full h-full rounded-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-gray-500 dark:text-gray-400">
+                  {newName?.[0]?.toUpperCase() || newEmail?.[0]?.toUpperCase() || "U"}
+                </div>
+              )}
+              <button 
+                onClick={() => setShowEdit(true)}
+                className="absolute bottom-0 right-0 bg-indigo-600 text-white rounded-full p-2"
+              >
+                ✒️
+              </button>
+            </div>
+            <h3 className="font-medium mt-2">{newName || newEmail}</h3>
+          </div>
+        </Card>
+        
+        {showEdit && (
+          <Card>
+            <form onSubmit={handleSave} className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium mb-1">Full Name</label>
+                <input 
+                  type="text" 
+                  value={newName} 
+                  onChange={(e) => setNewName(e.target.value)} 
+                  className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700" 
+                  required 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Email</label>
+                <input 
+                  type="email" 
+                  value={newEmail} 
+                  onChange={(e) => setNewEmail(e.target.value)} 
+                  className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700" 
+                  required 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Profile Image</label>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (ev) => setNewImage(ev.target.result);
+                      reader.readAsDataURL(file);
+                    }
+                  }} 
+                  className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700" 
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button className="px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-800" onClick={() => setShowEdit(false)}>Cancel</button>
+                <button className="px-3 py-2 rounded-lg bg-indigo-600 text-white" type="submit">Save</button>
+              </div>
+            </form>
+          </Card>
+        )}
+      </div>
+    );
+  };
+  
   // Show splash screen initially
   if (currentPage === 'splash' || !splashComplete) {
-    return <SplashScreen onSplashComplete={() => setSplashComplete(true)} />;
+    return <SplashScreen onSplashComplete={() => {
+      setSplashComplete(true);
+      // If user is authenticated, go to dashboard, otherwise go to home
+      if (user) {
+        setCurrentPage('dashboard');
+      } else {
+        setCurrentPage('home');
+      }
+    }} />;
   }
 
   // Show login screen
@@ -913,10 +1557,23 @@ function AppContent() {
     return <HomeScreen onLogin={() => setCurrentPage('login')} onRegister={() => setCurrentPage('signup')} />;
   }
 
+  // Fallback - if we get here and don't match any conditions, go to home
+  if (!user) {
+    console.log('Fallback: No user, going to home');
+    setCurrentPage('home');
+    return null; // Return null while state updates
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
       <div className="max-w-md mx-auto p-4 pb-24">
-        <Header user={user} onSettings={() => setCurrentPage("settings")} onLogout={() => setShowLogout(true)} />
+        <Header 
+          user={user} 
+          onSettings={() => setCurrentPage("settings")} 
+          onLogout={() => setShowLogout(true)} 
+          onProfileClick={() => setCurrentPage("profile")}
+          profileImage={profileImage}
+        />
         <main className="mt-4 space-y-4">
           {currentPage === "dashboard" && user && (
             <Dashboard 
@@ -926,7 +1583,34 @@ function AppContent() {
               onRecurringPayments={() => setCurrentPage("recurringPayments")} 
               onBillReminders={() => setCurrentPage("billReminders")} 
               onStatements={() => setCurrentPage("statements")} 
+              onProfileClick={() => setCurrentPage("profile")}
+              profileImage={profileImage}
+              showBalance={showBalance}
+              setShowBalance={setShowBalance}
+              balance={balance}
+              setBalance={setBalance}
+              accountNumber={accountNumber}
+              setAccountNumber={setAccountNumber}
+              accountId={accountId}
+              setAccountId={setAccountId}
+              showBalancePopup={showBalancePopup}
+              setShowBalancePopup={setShowBalancePopup}
+              newBalance={newBalance}
+              setNewBalance={setNewBalance}
             />
+          )}
+          {currentPage === "profile" && user && (
+            <div key="profile-page-container">
+              <ProfilePage 
+                onBack={() => setCurrentPage("dashboard")}
+                onThemeToggle={toggleTheme}
+                currentTheme={theme}
+                onProfileImageChange={handleProfileImageChange}
+                profileImage={profileImage}
+                accountNumber={accountNumber}
+                balance={balance}
+              />
+            </div>
           )}
           {currentPage === "recurringPayments" && user && <RecurringPaymentsPage />}
           {currentPage === "billReminders" && user && <BillRemindersPage />}
@@ -976,7 +1660,28 @@ function AppContent() {
 }
 
 /******************** Screens *****************************/
-function Header({ user, onSettings, onLogout }) {
+function Header({ user, onSettings, onLogout, onProfileClick, profileImage }) {
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showDropdown && !event.target.closest('.profile-dropdown')) {
+        setShowDropdown(false);
+      }
+    };
+    
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showDropdown]);
+
+  // Default profile image as a gradient circle
+  const defaultProfileImage = (
+    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
+      {user?.user_metadata?.full_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U"}
+    </div>
+  );
+
   return (
     <div className="sticky top-0 z-10 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-gray-900/60 bg-white/70 dark:bg-gray-900/70 border-b border-gray-200 dark:border-gray-800 rounded-b-xl">
       <div className="max-w-md mx-auto p-4 flex items-center justify-between">
@@ -986,13 +1691,52 @@ function Header({ user, onSettings, onLogout }) {
         </div>
         <div className="flex items-center gap-2">
           {user && (
-            <button onClick={onSettings} className="px-3 py-1.5 rounded-full bg-indigo-600 text-white text-sm shadow">Settings</button>
+            <div className="profile-dropdown relative">
+              <button 
+                onClick={() => setShowDropdown(!showDropdown)}
+                className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold flex items-center justify-center"
+              >
+                {profileImage ? (
+                  <img src={profileImage} alt="Profile" className="w-10 h-10 rounded-full object-cover" />
+                ) : (
+                  user.user_metadata?.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"
+                )}
+              </button>
+              
+              {showDropdown && (
+                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg py-2 z-20 border border-gray-200 dark:border-gray-700">
+                  <button 
+                    onClick={() => {
+                      onProfileClick();
+                      setShowDropdown(false);
+                    }}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    Profile
+                  </button>
+                  <button 
+                    onClick={() => {
+                      onSettings();
+                      setShowDropdown(false);
+                    }}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    Settings
+                  </button>
+                  <hr className="my-1 border-gray-200 dark:border-gray-700" />
+                  <button 
+                    onClick={() => {
+                      onLogout();
+                      setShowDropdown(false);
+                    }}
+                    className="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
           )}
-          {user ? (
-            <button onClick={onLogout} className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold flex items-center justify-center">
-              {user.user_metadata?.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"}
-            </button>
-          ) : null}
         </div>
       </div>
     </div>
@@ -1048,16 +1792,148 @@ function LoginForm({ onSubmit, onBack }) {
   );
 }
 
-function Dashboard({ user, transactions, onAdd, onRecurringPayments, onBillReminders, onStatements }) {
-  const total = user?.balance || 0;
+function Dashboard({ user, transactions, onAdd, onRecurringPayments, onBillReminders, onStatements, 
+                   onProfileClick, profileImage, showBalance, setShowBalance, balance, setBalance, 
+                   accountNumber, setAccountNumber, accountId, setAccountId,
+                   showBalancePopup, setShowBalancePopup, newBalance, setNewBalance }) {
+  const total = balance || 0;
   const recent = useMemo(() => [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5), [transactions]);
+
+  const handleSaveBalance = async () => {
+    const balanceValue = parseFloat(newBalance);
+    if (!isNaN(balanceValue) && user) {
+      if (accountId) {
+        // Update existing account
+        const updatedAccount = await updateSupabaseAccount(accountId, {
+          balance: balanceValue,
+          account_number: accountNumber
+        });
+        if (updatedAccount) {
+          setBalance(balanceValue);
+          setAccountId(updatedAccount.id);
+        }
+      } else {
+        // Create new account with the balance and account number
+        const newAccount = await createSupabaseAccount({
+          owner_email: user.email,
+          balance: balanceValue,
+          account_number: accountNumber
+        });
+        if (newAccount) {
+          setBalance(balanceValue);
+          setAccountId(newAccount.id);
+        }
+      }
+      setShowBalancePopup(false);
+      setNewBalance('');
+    }
+  };
+
+  // Load account number from localStorage on component mount
+  useEffect(() => {
+    const savedAccountNumber = localStorage.getItem('accountNumber');
+    if (savedAccountNumber) {
+      setAccountNumber(savedAccountNumber);
+    }
+  }, []);
 
   return (
     <div className="space-y-4">
-      <Card className="bg-gradient-to-br from-indigo-600 to-purple-600 text-white">
-        <p className="opacity-80">Total Balance</p>
-        <p className="text-4xl font-extrabold tracking-tight">{formatINR(total)}</p>
-        <p className="text-xs mt-1 opacity-80">Acct: {user?.email?.split('@')[0] || 'N/A'}</p>
+      {/* Balance Popup Modal */}
+      {showBalancePopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="px-4 py-3 border-b dark:border-gray-700 bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold">Set Your Account Details</h3>
+                <button 
+                  onClick={() => setShowBalancePopup(false)}
+                  className="opacity-90 hover:opacity-100"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div className="p-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Enter your account number and current balance to get started.
+              </p>
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-1">Account Number</label>
+                <input 
+                  type="text" 
+                  value={accountNumber} 
+                  onChange={(e) => setAccountNumber(e.target.value)} 
+                  className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
+                  placeholder="Enter your account number"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-1">Current Balance (₹)</label>
+                <input 
+                  type="number" 
+                  value={newBalance} 
+                  onChange={(e) => setNewBalance(e.target.value)} 
+                  className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
+                  placeholder="0.00"
+                  step="0.01"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button 
+                  className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700"
+                  onClick={() => setShowBalancePopup(false)}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="px-4 py-2 rounded-lg bg-indigo-600 text-white"
+                  onClick={handleSaveBalance}
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Card className="bg-gradient-to-br from-indigo-600 to-purple-600 text-white relative">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="opacity-80">Total Balance</p>
+            <p className="text-4xl font-extrabold tracking-tight">
+              {showBalance ? formatINR(total) : '••••••'}
+            </p>
+            <p className="text-xs mt-1 opacity-80">Acct: {accountNumber || user?.email?.split('@')[0] || 'N/A'}</p>
+          </div>
+          <div className="flex space-x-2">
+            <button 
+              onClick={() => setShowBalance(!showBalance)}
+              className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+            >
+              {showBalance ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                  <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z" clipRule="evenodd" />
+                  <path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z" />
+                </svg>
+              )}
+            </button>
+            <button 
+              onClick={() => setShowBalancePopup(true)}
+              className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+        </div>
       </Card>
 
       {/* Banking Features */}

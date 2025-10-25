@@ -141,8 +141,9 @@ export const AuthProvider = ({ children }) => {
       }
     )
 
-    getSession()
-    setLoading(false)
+    getSession().then(() => {
+      setLoading(false)
+    })
 
     return () => {
       authListener.subscription.unsubscribe()

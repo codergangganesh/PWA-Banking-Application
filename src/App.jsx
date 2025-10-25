@@ -218,6 +218,7 @@ function AppContent() {
   const [showBalancePopup, setShowBalancePopup] = useState(false);
   const [newBalance, setNewBalance] = useState('');
   const [dataSynced, setDataSynced] = useState(false); // New state to track if data has been synced
+  const [phone, setPhone] = useState(''); // Add phone state
   
   const { user, signOut } = useAuth();
 
@@ -231,6 +232,7 @@ function AppContent() {
     const savedTheme = localStorage.getItem('theme');
     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const savedProfileImage = localStorage.getItem('profileImage');
+    const savedPhone = localStorage.getItem('phone'); // Get saved phone
     
     if (savedTheme) {
       setTheme(savedTheme);
@@ -240,6 +242,10 @@ function AppContent() {
     
     if (savedProfileImage) {
       setProfileImage(savedProfileImage);
+    }
+    
+    if (savedPhone) {
+      setPhone(savedPhone);
     }
   }, []);
 
@@ -253,14 +259,20 @@ function AppContent() {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  // Save profile image to localStorage
+  // Save profile image and phone to localStorage
   useEffect(() => {
     if (profileImage) {
       localStorage.setItem('profileImage', profileImage);
     } else {
       localStorage.removeItem('profileImage');
     }
-  }, [profileImage]);
+    
+    if (phone) {
+      localStorage.setItem('phone', phone);
+    } else {
+      localStorage.removeItem('phone');
+    }
+  }, [profileImage, phone]);
 
   // Initialize database
   useEffect(() => {
@@ -340,6 +352,16 @@ function AppContent() {
   const handleProfileImageChange = (imageData) => {
     setProfileImage(imageData);
     // In a real app, you would save this to user metadata
+  };
+
+  // Handle phone change
+  const handlePhoneChange = (phoneData) => {
+    setPhone(phoneData);
+  };
+
+  // Toggle theme
+  const toggleTheme = () => {
+    setTheme(theme === 'light' ? 'dark' : 'light');
   };
 
   const handleLoginSuccess = () => {

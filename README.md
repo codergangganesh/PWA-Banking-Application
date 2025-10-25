@@ -5,19 +5,23 @@
 A modern Progressive Web App (PWA) for banking built with React, Vite, and Supabase. This application provides a secure and responsive banking experience that works across all devices.
 
 ## 📋 Table of Contents
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Architecture](#architecture)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Environment Variables](#environment-variables)
-- [Development](#development)
-- [Building for Production](#building-for-production)
-- [Deployment](#deployment)
-- [Screenshots](#screenshots)
-- [Contributing](#contributing)
-- [License](#license)
-- [Author](#author)
+- [PWA Banking Application](#pwa-banking-application)
+  - [📋 Table of Contents](#-table-of-contents)
+  - [✨ Features](#-features)
+  - [🛠 Tech Stack](#-tech-stack)
+  - [🏗 Architecture](#-architecture)
+  - [📋 Prerequisites](#-prerequisites)
+  - [🚀 Installation](#-installation)
+  - [🔐 Environment Variables](#-environment-variables)
+  - [🧪 Development](#-development)
+  - [🏗 Building for Production](#-building-for-production)
+  - [☁️ Deployment](#️-deployment)
+    - [Netlify](#netlify)
+    - [Vercel](#vercel)
+    - [GitHub Pages](#github-pages)
+  - [🤝 Contributing](#-contributing)
+  - [📄 License](#-license)
+  - [✍️ Author](#️-author)
 
 ## ✨ Features
 
@@ -149,16 +153,6 @@ npm run preview
    npm run deploy
    ```
 
-## 📸 Screenshots
-
-### Login Screen
-![Login Screen](screenshots/login.png)
-
-### Dashboard
-![Dashboard](screenshots/dashboard.png)
-
-### Transactions
-![Transactions](screenshots/transactions.png)
 
 ## 🤝 Contributing
 

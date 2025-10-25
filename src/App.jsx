@@ -15,7 +15,8 @@ import {
   deleteBillReminder,
   getAccountInfo as getSupabaseAccountInfo,
   createAccount as createSupabaseAccount,
-  updateAccount as updateSupabaseAccount
+  updateAccount as updateSupabaseAccount,
+  deleteTransaction as deleteSupabaseTransaction
 } from './services/supabaseDataClient';
 import SplashScreen from './components/SplashScreen';
 import LoginScreen from './components/LoginScreen';
@@ -395,30 +396,62 @@ function AppContent() {
   const addTransaction = async ({ type, amount, description, category }) => {
     if (!user) return;
     
+    // Calculate amount value
+    const amountValue = Number(amount) * (type === "expense" ? -1 : 1);
+    
+    // Create transaction object
     const transaction = {
       owner_email: user.email,
       type,
-      amount: Number(amount) * (type === "expense" ? -1 : 1),
+      amount: amountValue,
       description,
       category,
       date: todayISO(),
     };
     
+    // Update balance immediately for instant UI feedback
+    let newBalance = balance;
+    if (accountId) {
+      newBalance = balance + amountValue;
+      setBalance(newBalance);
+    }
+    
+    // Add to local state immediately for instant UI feedback
+    const tempId = `temp_${Date.now()}`; // Temporary ID for UI purposes
+    const tempTransaction = {
+      ...transaction,
+      id: tempId,
+      created_at: new Date().toISOString()
+    };
+    
+    setTransactions(prev => [tempTransaction, ...prev]);
+    
     try {
-      // Add to Supabase
+      // Add to Supabase in the background
       const newTransaction = await addSupabaseTransaction(transaction);
       if (newTransaction) {
-        setTransactions(prev => [newTransaction, ...prev]);
-        // Update balance
+        // Replace temporary transaction with the real one from Supabase
+        setTransactions(prev => 
+          [newTransaction, ...prev.filter(t => t.id !== tempId)]
+        );
+        
+        // Update balance in Supabase in the background
         if (accountId) {
-          const amountValue = Number(amount) * (type === "expense" ? -1 : 1);
-          const newBalance = balance + amountValue;
-          setBalance(newBalance);
-          // Update balance in Supabase
           await updateSupabaseAccount(accountId, { balance: newBalance });
+        }
+      } else {
+        // If Supabase addition failed, remove the temporary transaction and revert balance
+        setTransactions(prev => prev.filter(t => t.id !== tempId));
+        if (accountId) {
+          setBalance(balance);
         }
       }
     } catch (error) {
+      // If Supabase addition failed, remove the temporary transaction and revert balance
+      setTransactions(prev => prev.filter(t => t.id !== tempId));
+      if (accountId) {
+        setBalance(balance);
+      }
       console.error('Error adding transaction:', error);
     }
   };
@@ -512,36 +545,82 @@ function AppContent() {
   
   const processRecurringPayment = async (payment) => {
     // Add transaction from recurring payment
-    await addTransaction({
-      type: "expense",
-      amount: payment.amount,
-      description: `${payment.description} (Recurring)`,
-      category: payment.category
-    });
+    // We'll add the transaction immediately for UI feedback
+    const amountValue = Number(payment.amount) * -1; // Expense
     
-    // Update next payment date based on frequency
-    const nextDate = new Date(payment.next_date);
-    switch(payment.frequency) {
-      case 'weekly':
-        nextDate.setDate(nextDate.getDate() + 7);
-        break;
-      case 'monthly':
-        nextDate.setMonth(nextDate.getMonth() + 1);
-        break;
-      case 'quarterly':
-        nextDate.setMonth(nextDate.getMonth() + 3);
-        break;
-      case 'yearly':
-        nextDate.setFullYear(nextDate.getFullYear() + 1);
-        break;
+    // Update balance immediately
+    let newBalance = balance;
+    if (accountId) {
+      newBalance = balance + amountValue;
+      setBalance(newBalance);
     }
     
-    const updatedPayment = {
-      ...payment,
-      next_date: nextDate.toISOString().slice(0, 10)
+    // Add transaction to UI immediately
+    const tempId = `temp_${Date.now()}`; // Temporary ID for UI purposes
+    const tempTransaction = {
+      owner_email: user.email,
+      type: "expense",
+      amount: amountValue,
+      description: `${payment.description} (Recurring)`,
+      category: payment.category,
+      date: todayISO(),
+      id: tempId,
+      created_at: new Date().toISOString()
     };
     
+    setTransactions(prev => [tempTransaction, ...prev]);
+    
     try {
+      // Add transaction to Supabase in background
+      const newTransaction = await addSupabaseTransaction({
+        owner_email: user.email,
+        type: "expense",
+        amount: amountValue,
+        description: `${payment.description} (Recurring)`,
+        category: payment.category,
+        date: todayISO(),
+      });
+      
+      if (newTransaction) {
+        // Replace temporary transaction with real one
+        setTransactions(prev => 
+          [newTransaction, ...prev.filter(t => t.id !== tempId)]
+        );
+        
+        // Update balance in Supabase
+        if (accountId) {
+          await updateSupabaseAccount(accountId, { balance: newBalance });
+        }
+      } else {
+        // If failed, remove temp transaction and revert balance
+        setTransactions(prev => prev.filter(t => t.id !== tempId));
+        if (accountId) {
+          setBalance(balance);
+        }
+      }
+      
+      // Update next payment date based on frequency
+      const nextDate = new Date(payment.next_date);
+      switch(payment.frequency) {
+        case 'weekly':
+          nextDate.setDate(nextDate.getDate() + 7);
+          break;
+        case 'monthly':
+          nextDate.setMonth(nextDate.getMonth() + 1);
+          break;
+        case 'quarterly':
+          nextDate.setMonth(nextDate.getMonth() + 3);
+          break;
+        case 'yearly':
+          nextDate.setFullYear(nextDate.getFullYear() + 1);
+          break;
+      }
+      
+      const updatedPayment = {
+        ...payment,
+        next_date: nextDate.toISOString().slice(0, 10)
+      };
+      
       // Update in Supabase
       const result = await updateRecurringPayment(payment.id, {
         next_date: updatedPayment.next_date
@@ -552,12 +631,17 @@ function AppContent() {
         );
       }
     } catch (error) {
-      console.error('Error updating recurring payment:', error);
+      // If failed, remove temp transaction and revert balance
+      setTransactions(prev => prev.filter(t => t.id !== tempId));
+      if (accountId) {
+        setBalance(balance);
+      }
+      console.error('Error processing recurring payment:', error);
     }
   };
-
+  
   // Bill Reminders
-  const addBillReminder = async ({ description, amount, dueDate, category }) => {
+  const addBillReminderLocal = async ({ description, amount, dueDate, category }) => {
     if (!user) return;
     
     const reminder = {
@@ -581,24 +665,70 @@ function AppContent() {
     }
   };
   
-  const markBillAsPaid = async (id) => {
+  const markBillAsPaidLocal = async (id) => {
     if (!user) return;
     
     const bill = billReminders.find(b => b.id === id);
     if (!bill) return;
     
     // Add transaction for the bill payment
-    await addTransaction({
-      type: "expense",
-      amount: bill.amount,
-      description: `${bill.description} (Bill Payment)`,
-      category: bill.category
-    });
+    // We'll add the transaction immediately for UI feedback
+    const amountValue = Number(bill.amount) * -1; // Expense
     
-    // Update bill status
-    const updatedBill = { ...bill, is_paid: true };
+    // Update balance immediately
+    let newBalance = balance;
+    if (accountId) {
+      newBalance = balance + amountValue;
+      setBalance(newBalance);
+    }
+    
+    // Add transaction to UI immediately
+    const tempId = `temp_${Date.now()}`; // Temporary ID for UI purposes
+    const tempTransaction = {
+      owner_email: user.email,
+      type: "expense",
+      amount: amountValue,
+      description: `${bill.description} (Bill Payment)`,
+      category: bill.category,
+      date: todayISO(),
+      id: tempId,
+      created_at: new Date().toISOString()
+    };
+    
+    setTransactions(prev => [tempTransaction, ...prev]);
     
     try {
+      // Add transaction to Supabase in background
+      const newTransaction = await addSupabaseTransaction({
+        owner_email: user.email,
+        type: "expense",
+        amount: amountValue,
+        description: `${bill.description} (Bill Payment)`,
+        category: bill.category,
+        date: todayISO(),
+      });
+      
+      if (newTransaction) {
+        // Replace temporary transaction with real one
+        setTransactions(prev => 
+          [newTransaction, ...prev.filter(t => t.id !== tempId)]
+        );
+        
+        // Update balance in Supabase
+        if (accountId) {
+          await updateSupabaseAccount(accountId, { balance: newBalance });
+        }
+      } else {
+        // If failed, remove temp transaction and revert balance
+        setTransactions(prev => prev.filter(t => t.id !== tempId));
+        if (accountId) {
+          setBalance(balance);
+        }
+      }
+      
+      // Update bill status
+      const updatedBill = { ...bill, is_paid: true };
+      
       // Update in Supabase
       const result = await updateBillReminder(id, { is_paid: true });
       if (result) {
@@ -607,11 +737,16 @@ function AppContent() {
         );
       }
     } catch (error) {
-      console.error('Error updating bill reminder:', error);
+      // If failed, remove temp transaction and revert balance
+      setTransactions(prev => prev.filter(t => t.id !== tempId));
+      if (accountId) {
+        setBalance(balance);
+      }
+      console.error('Error marking bill as paid:', error);
     }
   };
   
-  const deleteBillReminder = async (id) => {
+  const deleteBillReminderLocal = async (id) => {
     if (!user) return;
     
     try {
@@ -1158,7 +1293,7 @@ function AppContent() {
     
     const handleSubmit = (e) => {
       e.preventDefault();
-      addBillReminder(newBill);
+      addBillReminderLocal(newBill);
       setNewBill({
         description: "",
         amount: "",
@@ -1169,9 +1304,9 @@ function AppContent() {
     };
     
     // Sort bills by due date (upcoming first)
-    const sortedBills = [...billReminders].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
-    const unpaidBills = sortedBills.filter(bill => !bill.isPaid);
-    const paidBills = sortedBills.filter(bill => bill.isPaid);
+    const sortedBills = [...billReminders].sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
+    const unpaidBills = sortedBills.filter(bill => !bill.is_paid);
+    const paidBills = sortedBills.filter(bill => bill.is_paid);
     
     return (
       <div className="space-y-4">
@@ -1263,7 +1398,7 @@ function AppContent() {
               <h3 className="font-medium mb-2">Upcoming & Overdue Bills</h3>
               <div className="space-y-3">
                 {unpaidBills.map(bill => {
-                  const dueDate = new Date(bill.dueDate);
+                  const dueDate = new Date(bill.due_date);
                   const today = new Date();
                   today.setHours(0, 0, 0, 0);
                   const isOverdue = dueDate < today;
@@ -1276,21 +1411,21 @@ function AppContent() {
                       <div>
                         <h3 className="font-medium">{bill.description}</h3>
                         <div className="text-sm text-gray-600 dark:text-gray-400">
-                          {bill.category} • Due: {formatDate(bill.dueDate)}
+                          {bill.category} • Due: {formatDate(bill.due_date)}
                           {isOverdue && <span className="text-red-500 ml-2">OVERDUE</span>}
                         </div>
                       </div>
                       <div className="flex items-center space-x-3">
                         <div className="font-semibold">{formatINR(bill.amount)}</div>
                         <button 
-                          onClick={() => markBillAsPaid(bill.id)}
+                          onClick={() => markBillAsPaidLocal(bill.id)}
                           className="p-1 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded hover:bg-green-200 dark:hover:bg-green-800"
                           title="Mark as paid"
                         >
                           ✓
                         </button>
                         <button 
-                          onClick={() => deleteBillReminder(bill.id)}
+                          onClick={() => deleteBillReminderLocal(bill.id)}
                           className="p-1 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded hover:bg-red-200 dark:hover:bg-red-800"
                           title="Delete bill reminder"
                         >
@@ -1313,13 +1448,13 @@ function AppContent() {
                     <div>
                       <h3 className="font-medium">{bill.description}</h3>
                       <div className="text-sm text-gray-600 dark:text-gray-400">
-                        {bill.category} • Paid • Due: {formatDate(bill.dueDate)}
+                        {bill.category} • Paid • Due: {formatDate(bill.due_date)}
                       </div>
                     </div>
                     <div className="flex items-center space-x-3">
                       <div className="font-semibold">{formatINR(bill.amount)}</div>
                       <button 
-                        onClick={() => deleteBillReminder(bill.id)}
+                        onClick={() => deleteBillReminderLocal(bill.id)}
                         className="p-1 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded hover:bg-red-200 dark:hover:bg-red-800"
                         title="Delete bill reminder"
                       >
@@ -1396,7 +1531,7 @@ function AppContent() {
           <div className="border-t dark:border-gray-800 pt-4">
             <div className="flex justify-between font-medium mb-2 text-sm">
               <div>Account Number</div>
-              <div>{user?.email?.split('@')[0] || 'N/A'}</div>
+              <div>{accountNumber || user?.email?.split('@')[0] || 'N/A'}</div>
             </div>
             <div className="flex justify-between font-medium mb-4 text-sm">
               <div>Account Holder</div>
@@ -1405,7 +1540,7 @@ function AppContent() {
             
             <div className="flex justify-between font-semibold mb-2 pb-2 border-b dark:border-gray-800">
               <div>Current Balance</div>
-              <div>{formatINR(0)}</div>
+              <div>{formatINR(balance)}</div>
             </div>
           </div>
           
@@ -1541,7 +1676,13 @@ function AppContent() {
                 />
               </div>
               <div className="flex justify-end gap-2">
-                <button className="px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-800" onClick={() => setShowEdit(false)}>Cancel</button>
+                <button 
+                  className="px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-800" 
+                  onClick={() => setShowEdit(false)}
+                  type="button"
+                >
+                  Cancel
+                </button>
                 <button className="px-3 py-2 rounded-lg bg-indigo-600 text-white" type="submit">Save</button>
               </div>
             </form>
@@ -1820,6 +1961,13 @@ function Dashboard({ user, transactions, onAdd, onRecurringPayments, onBillRemin
                    showBalancePopup, setShowBalancePopup, newBalance, setNewBalance }) {
   const total = balance || 0;
   const recent = useMemo(() => [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5), [transactions]);
+  
+  // State for transaction editing
+  const [editingTransaction, setEditingTransaction] = useState(null);
+  const [editForm, setEditForm] = useState({ type: 'expense', amount: '', description: '', category: 'Food' });
+  
+  // State for account number visibility
+  const [showAccountNumber, setShowAccountNumber] = useState(true);
 
   const handleSaveBalance = async () => {
     const balanceValue = parseFloat(newBalance);
@@ -1851,6 +1999,159 @@ function Dashboard({ user, transactions, onAdd, onRecurringPayments, onBillRemin
     }
   };
 
+  // Function to start editing a transaction
+  const startEditingTransaction = (transaction) => {
+    setEditingTransaction(transaction);
+    setEditForm({
+      type: transaction.type,
+      amount: Math.abs(transaction.amount),
+      description: transaction.description,
+      category: transaction.category
+    });
+  };
+
+  // Function to save edited transaction
+  const saveEditedTransaction = async () => {
+    if (!editingTransaction || !user) return;
+    
+    try {
+      // Calculate the new amount based on type
+      const amountValue = Number(editForm.amount) * (editForm.type === "expense" ? -1 : 1);
+      
+      // Update local state immediately for instant UI feedback
+      const oldTransaction = { ...editingTransaction };
+      const updatedLocalTransaction = {
+        ...editingTransaction,
+        type: editForm.type,
+        amount: amountValue,
+        description: editForm.description,
+        category: editForm.category
+      };
+      
+      setTransactions(prev => prev.map(t => 
+        t.id === editingTransaction.id ? updatedLocalTransaction : t
+      ));
+      
+      // Update balance immediately if needed
+      let newBalance = balance;
+      if (accountId) {
+        // Calculate the difference
+        const oldAmount = editingTransaction.amount;
+        const newAmount = amountValue;
+        const difference = newAmount - oldAmount;
+        
+        newBalance = balance + difference;
+        setBalance(newBalance);
+      }
+      
+      // Close edit modal immediately
+      setEditingTransaction(null);
+      
+      // Update in Supabase in the background
+      const updatedTransaction = await updateTransaction(editingTransaction.id, {
+        type: editForm.type,
+        amount: amountValue,
+        description: editForm.description,
+        category: editForm.category
+      });
+      
+      if (updatedTransaction) {
+        // If Supabase update was successful, ensure local state matches
+        setTransactions(prev => prev.map(t => 
+          t.id === editingTransaction.id ? { ...updatedTransaction } : t
+        ));
+        
+        // Update balance in Supabase in the background
+        if (accountId) {
+          await updateSupabaseAccount(accountId, { balance: newBalance });
+        }
+      } else {
+        // If Supabase update failed, revert local changes
+        setTransactions(prev => prev.map(t => 
+          t.id === editingTransaction.id ? oldTransaction : t
+        ));
+        if (accountId) {
+          setBalance(balance);
+        }
+      }
+    } catch (error) {
+      console.error('Error updating transaction:', error);
+    }
+  };
+
+  // Function to delete a transaction
+  const handleDeleteTransaction = (id) => {
+    if (!user) return;
+    
+    // Find the transaction to delete
+    const transactionToDelete = transactions.find(t => t.id === id);
+    if (!transactionToDelete) return;
+    
+    // Update local state immediately for instant UI feedback
+    setTransactions(prev => prev.filter(t => t.id !== id));
+    
+    // Update balance immediately for instant UI feedback
+    let newBalance = balance;
+    if (accountId) {
+      const amountValue = transactionToDelete.amount;
+      newBalance = balance - amountValue;
+      setBalance(newBalance);
+    }
+    
+    // Delete from Supabase in the background (don't wait for result)
+    deleteSupabaseTransaction(id)
+      .then(async (success) => {
+        if (!success) {
+          console.error('Failed to delete transaction from Supabase');
+          // Revert the UI changes if deletion failed
+          setTransactions(prev => [...prev, transactionToDelete]);
+          if (accountId) {
+            setBalance(balance);
+          }
+          // Show error message to user
+          alert('Failed to delete transaction. Please try again.');
+        } else {
+          // Update balance in Supabase in the background
+          if (accountId) {
+            try {
+              await updateSupabaseAccount(accountId, { balance: newBalance });
+            } catch (error) {
+              console.error('Error updating account balance:', error);
+            }
+          }
+        }
+      })
+      .catch(error => {
+        console.error('Error deleting transaction:', error);
+        // Revert the UI changes if deletion failed
+        setTransactions(prev => [...prev, transactionToDelete]);
+        if (accountId) {
+          setBalance(balance);
+        }
+        // Show error message to user
+        alert('Error deleting transaction. Please try again.');
+      });
+  };
+
+  // State for delete confirmation modal
+  const [transactionToDelete, setTransactionToDelete] = useState(null);
+  
+  // Function to confirm deletion
+  const confirmDeleteTransaction = (id) => {
+    const transaction = transactions.find(t => t.id === id);
+    if (transaction) {
+      setTransactionToDelete(transaction);
+    }
+  };
+  
+  // Function to actually delete after confirmation
+  const executeDeleteTransaction = () => {
+    if (transactionToDelete) {
+      handleDeleteTransaction(transactionToDelete.id);
+      setTransactionToDelete(null);
+    }
+  };
+
   // Load account number from localStorage on component mount
   useEffect(() => {
     const savedAccountNumber = localStorage.getItem('accountNumber');
@@ -1861,6 +2162,80 @@ function Dashboard({ user, transactions, onAdd, onRecurringPayments, onBillRemin
 
   return (
     <div className="space-y-4">
+      {/* Edit Transaction Modal */}
+      {editingTransaction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="px-4 py-3 border-b dark:border-gray-700 bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold">Edit Transaction</h3>
+                <button 
+                  onClick={() => setEditingTransaction(null)}
+                  className="opacity-90 hover:opacity-100"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div className="p-4">
+              <div className="grid gap-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <button 
+                    className={`px-3 py-2 rounded-lg ${editForm.type === "expense" ? "bg-red-500 text-white" : "bg-gray-200 dark:bg-gray-800"}`} 
+                    onClick={() => setEditForm(prev => ({ ...prev, type: "expense" }))}
+                  >
+                    Expense
+                  </button>
+                  <button 
+                    className={`px-3 py-2 rounded-lg ${editForm.type === "income" ? "bg-green-600 text-white" : "bg-gray-200 dark:bg-gray-800"}`} 
+                    onClick={() => setEditForm(prev => ({ ...prev, type: "income" }))}
+                  >
+                    Income
+                  </button>
+                </div>
+                <Input 
+                  label="Amount (₹)" 
+                  type="number" 
+                  value={editForm.amount} 
+                  onChange={(e) => setEditForm(prev => ({ ...prev, amount: e.target.value }))} 
+                />
+                <Input 
+                  label="Description" 
+                  value={editForm.description} 
+                  onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))} 
+                />
+                <label className="block">
+                  <span className="block text-xs mb-1 opacity-80">Category</span>
+                  <select 
+                    value={editForm.category} 
+                    onChange={(e) => setEditForm(prev => ({ ...prev, category: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    {["Food", "Rent", "Bills", "Shopping", "Income", "Entertainment", "Travel"].map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </label>
+                <div className="flex justify-end gap-2">
+                  <button 
+                    className="px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-800" 
+                    onClick={() => setEditingTransaction(null)}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    className="px-3 py-2 rounded-lg bg-indigo-600 text-white" 
+                    onClick={saveEditedTransaction}
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Balance Popup Modal */}
       {showBalancePopup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
@@ -1920,6 +2295,32 @@ function Dashboard({ user, transactions, onAdd, onRecurringPayments, onBillRemin
         </div>
       )}
 
+      {/* Delete Confirmation Modal */}
+      {transactionToDelete && (
+        <Modal open={true} onClose={() => setTransactionToDelete(null)} title="Confirm Deletion" danger>
+          <div className="space-y-3">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Are you sure you want to delete the transaction "{transactionToDelete.description}"? 
+              This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button 
+                className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700"
+                onClick={() => setTransactionToDelete(null)}
+              >
+                Cancel
+              </button>
+              <button 
+                className="px-4 py-2 rounded-lg bg-red-600 text-white"
+                onClick={executeDeleteTransaction}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       <Card className="bg-gradient-to-br from-indigo-600 to-purple-600 text-white relative">
         <div className="flex justify-between items-start">
           <div>
@@ -1927,7 +2328,28 @@ function Dashboard({ user, transactions, onAdd, onRecurringPayments, onBillRemin
             <p className="text-4xl font-extrabold tracking-tight">
               {showBalance ? formatINR(total) : '••••••'}
             </p>
-            <p className="text-xs mt-1 opacity-80">Acct: {accountNumber || user?.email?.split('@')[0] || 'N/A'}</p>
+            <p className="text-xs mt-1 opacity-80 flex items-center">
+              Acct: 
+              <span className="ml-1">
+                {showAccountNumber ? (accountNumber || user?.email?.split('@')[0] || 'N/A') : '••••••'}
+              </span>
+              <button 
+                onClick={() => setShowAccountNumber(!showAccountNumber)}
+                className="ml-2 p-1 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+              >
+                {showAccountNumber ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                    <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z" clipRule="evenodd" />
+                    <path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z" />
+                  </svg>
+                )}
+              </button>
+            </p>
           </div>
           <div className="flex space-x-2">
             <button 
@@ -1989,7 +2411,7 @@ function Dashboard({ user, transactions, onAdd, onRecurringPayments, onBillRemin
       <Card>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold">Recent Transactions</h3>
-          <AddTxn onAdd={onAdd} />
+          <AddTxn onAdd={onAdd} balance={balance} />
         </div>
         {recent.length === 0 ? (
           <p className="text-sm opacity-70">No transactions yet.</p>
@@ -2001,7 +2423,31 @@ function Dashboard({ user, transactions, onAdd, onRecurringPayments, onBillRemin
                   <p className="font-medium">{t.description}</p>
                   <p className="text-xs opacity-70">{new Date(t.date).toLocaleDateString()} • {t.category}</p>
                 </div>
-                <span className={`font-semibold ${t.amount < 0 ? "text-red-600" : "text-green-600"}`}>{t.amount < 0 ? "-" : "+"}{formatINR(Math.abs(t.amount))}</span>
+                <div className="flex items-center space-x-2">
+                  <span className={`font-semibold ${t.amount < 0 ? "text-red-600" : "text-green-600"}`}>
+                    {t.amount < 0 ? "-" : "+"}{formatINR(Math.abs(t.amount))}
+                  </span>
+                  <div className="flex space-x-1">
+                    <button 
+                      onClick={() => startEditingTransaction(t)}
+                      className="p-1 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900 rounded"
+                      title="Edit transaction"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                      </svg>
+                    </button>
+                    <button 
+                      onClick={() => confirmDeleteTransaction(t.id)}
+                      className="p-1 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900 rounded"
+                      title="Delete transaction"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               </li>
             ))}
           </ul>
@@ -2067,15 +2513,52 @@ function Input({ label, className = "", ...rest }) {
   );
 }
 
-function AddTxn({ onAdd }) {
+function AddTxn({ onAdd, balance }) {
   const [open, setOpen] = useState(false);
   const [type, setType] = useState("expense");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("Food");
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+
+  // Show toast message
+  const showToastMessage = (message) => {
+    setToastMessage(message);
+    setShowToast(true);
+    setTimeout(() => {
+      setShowToast(false);
+      setToastMessage("");
+    }, 3000);
+  };
+
+  const handleAdd = () => {
+    // Validate amount for expense transactions
+    if (type === "expense") {
+      const amountValue = Number(amount);
+      if (amountValue > balance) {
+        showToastMessage("Insufficient balance for this transaction!");
+        return;
+      }
+    }
+    
+    onAdd({ type, amount, description, category });
+    setOpen(false);
+    // Reset form
+    setAmount("");
+    setDescription("");
+    setCategory("Food");
+  };
 
   return (
     <>
+      {/* Toast message */}
+      {showToast && (
+        <div className="fixed top-4 right-4 z-50 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg">
+          {toastMessage}
+        </div>
+      )}
+      
       <button onClick={() => setOpen(true)} className="px-3 py-2 rounded-lg bg-indigo-600 text-white">+ Add</button>
       <Modal open={open} onClose={() => setOpen(false)} title="Add Transaction">
         <div className="grid gap-3">
@@ -2095,7 +2578,7 @@ function AddTxn({ onAdd }) {
           </label>
           <div className="flex justify-end gap-2">
             <button className="px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-800" onClick={() => setOpen(false)}>Cancel</button>
-            <button className="px-3 py-2 rounded-lg bg-indigo-600 text-white" onClick={() => { onAdd({ type, amount, description, category }); setOpen(false); }}>Add</button>
+            <button className="px-3 py-2 rounded-lg bg-indigo-600 text-white" onClick={handleAdd}>Add</button>
           </div>
         </div>
       </Modal>

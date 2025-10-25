@@ -52,12 +52,31 @@ export const updateTransaction = async (id, updates) => {
 
 export const deleteTransaction = async (id) => {
   try {
+    // First, let's get the transaction to verify ownership
+    const { data: transaction, error: fetchError } = await supabase
+      .from('transactions')
+      .select('id, owner_email')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching transaction:', fetchError);
+      console.error('Error details:', fetchError.message, fetchError.details, fetchError.hint);
+      return false;
+    }
+
+    // Then delete the transaction
     const { data, error } = await supabase
       .from('transactions')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('owner_email', transaction.owner_email);
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error deleting transaction:', error);
+      console.error('Error details:', error.message, error.details, error.hint);
+      throw error;
+    }
     return true;
   } catch (error) {
     console.error('Error deleting transaction:', error);

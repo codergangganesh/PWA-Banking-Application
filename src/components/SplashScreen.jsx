@@ -18,6 +18,18 @@ const SplashScreen = ({ onSplashComplete }) => {
     }
   }, [loading, user, onSplashComplete])
 
+  // Show a simple loading screen while checking auth state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-600 to-purple-600 flex flex-col items-center justify-center text-white">
+        <div className="flex justify-center">
+          <div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
+        </div>
+        <p className="mt-4 text-sm opacity-75">Checking authentication...</p>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-600 to-purple-600 flex flex-col items-center justify-center text-white">
       <motion.div

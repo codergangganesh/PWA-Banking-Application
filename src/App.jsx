@@ -367,11 +367,15 @@ function AppContent() {
 
   const handleLoginSuccess = () => {
     console.log('Login successful, setting page to dashboard');
+    // Show a success message
+    // In a real app, you might use a toast notification library
     setCurrentPage('dashboard');
   };
 
   const handleSignupSuccess = () => {
     console.log('Signup successful, setting page to login');
+    // Show a success message
+    // In a real app, you might use a toast notification library
     setCurrentPage('login');
   };
 

@@ -371,8 +371,8 @@ function AppContent() {
   };
 
   const handleSignupSuccess = () => {
-    console.log('Signup successful, setting page to dashboard');
-    setCurrentPage('LoginScreen');
+    console.log('Signup successful, setting page to login');
+    setCurrentPage('login');
   };
 
   const handleLogoutConfirmed = async () => {
@@ -1712,7 +1712,7 @@ function AppContent() {
 
   // Show signup screen
   if (currentPage === 'signup') {
-    return <SignupScreen onLoginClick={() => setCurrentPage('login')} />;
+    return <SignupScreen onLoginClick={() => setCurrentPage('login')} onSignupSuccess={handleSignupSuccess} />;
   }
 
   // Show home screen when not authenticated

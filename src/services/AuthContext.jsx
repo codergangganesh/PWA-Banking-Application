@@ -15,6 +15,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [firstLogin, setFirstLogin] = useState(true)
 
   // Get user session
   const getSession = useCallback(async () => {
@@ -39,9 +40,7 @@ export const AuthProvider = ({ children }) => {
       
       if (error) throw error
       
-      // Automatically log in after signup
-      setSession(data.session)
-      setUser(data.user)
+      // Don't automatically log in after signup - just return the data
       return { data, error: null }
     } catch (error) {
       console.error('Sign up error:', error)
@@ -61,9 +60,33 @@ export const AuthProvider = ({ children }) => {
       
       setSession(data.session)
       setUser(data.user)
-      return { data, error: null }
+      
+      // Check if this is the user's first login
+      const isFirstLogin = firstLogin;
+      setFirstLogin(false);
+      
+      return { data, error: null, firstLogin: isFirstLogin }
     } catch (error) {
       console.error('Sign in error:', error)
+      return { data: null, error }
+    }
+  }
+
+  // Sign in with Google
+  const signInWithGoogle = async () => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin,
+        },
+      })
+      
+      if (error) throw error
+      
+      return { data, error: null }
+    } catch (error) {
+      console.error('Google sign in error:', error)
       return { data: null, error }
     }
   }
@@ -76,6 +99,7 @@ export const AuthProvider = ({ children }) => {
       
       setSession(null)
       setUser(null)
+      setFirstLogin(true)
       return { error: null }
     } catch (error) {
       console.error('Sign out error:', error)
@@ -135,10 +159,17 @@ export const AuthProvider = ({ children }) => {
   // Listen for auth state changes
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         setSession(session)
         setUser(session?.user || null)
         setLoading(false)
+        
+        // Handle OAuth login events
+        if (event === 'SIGNED_IN' && session?.user) {
+          // This will trigger for both email/password and OAuth logins
+          // The UI can show appropriate messages based on the login method
+          console.log('User signed in:', session.user);
+        }
       }
     )
 
@@ -157,6 +188,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     signUp,
     signIn,
+    signInWithGoogle,
     signOut,
     resetPassword,
     updatePassword,

@@ -7,7 +7,19 @@ const LoginScreen = ({ onRegisterClick, onLoginSuccess }) => {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showToast, setShowToast] = useState(false) // Added toast state
+  const [toastMessage, setToastMessage] = useState('') // Added toast message state
   const { signIn } = useAuth()
+
+  // Toast function
+  const showToastMessage = (message) => {
+    setToastMessage(message)
+    setShowToast(true)
+    setTimeout(() => {
+      setShowToast(false)
+      setToastMessage('')
+    }, 3000)
+  }
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -23,7 +35,12 @@ const LoginScreen = ({ onRegisterClick, onLoginSuccess }) => {
         return
       }
       
-      onLoginSuccess()
+      // Show success toast and proceed to dashboard
+      showToastMessage('Login successful')
+      setTimeout(() => {
+        onLoginSuccess()
+      }, 1000)
+      
     } catch (err) {
       setError('An unexpected error occurred. Please try again.')
       setLoading(false)
@@ -32,6 +49,12 @@ const LoginScreen = ({ onRegisterClick, onLoginSuccess }) => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+      {/* Toast message */}
+      {showToast && (
+        <div className="fixed top-4 right-4 z-50 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg">
+          {toastMessage}
+        </div>
+      )}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

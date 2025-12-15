@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+ import React, { useState } from 'react'
 import { useAuth } from '../services/AuthContext'
 import { supabase } from '../services/supabaseClient'
 import { motion } from 'framer-motion'
@@ -10,7 +10,19 @@ const SignupScreen = ({ onLoginClick, onSignupSuccess }) => {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showToast, setShowToast] = useState(false) // Added toast state
+  const [toastMessage, setToastMessage] = useState('') // Added toast message state
   const { signUp } = useAuth()
+
+  // Toast function
+  const showToastMessage = (message) => {
+    setToastMessage(message)
+    setShowToast(true)
+    setTimeout(() => {
+      setShowToast(false)
+      setToastMessage('')
+    }, 3000)
+  }
 
   const handleSignup = async (e) => {
     e.preventDefault()
@@ -49,7 +61,12 @@ const SignupScreen = ({ onLoginClick, onSignupSuccess }) => {
         }
       }
       
-      onSignupSuccess()
+      // Show success toast and redirect to login
+      showToastMessage('Account created successfully')
+      setTimeout(() => {
+        onLoginClick() // Redirect to login page
+      }, 2000)
+      
     } catch (err) {
       setError('An unexpected error occurred. Please try again.')
       setLoading(false)
@@ -58,6 +75,12 @@ const SignupScreen = ({ onLoginClick, onSignupSuccess }) => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+      {/* Toast message */}
+      {showToast && (
+        <div className="fixed top-4 right-4 z-50 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg">
+          {toastMessage}
+        </div>
+      )}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

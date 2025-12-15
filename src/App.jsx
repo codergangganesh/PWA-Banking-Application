@@ -1712,7 +1712,7 @@ function AppContent() {
 
   // Show signup screen
   if (currentPage === 'signup') {
-    return <SignupScreen onLoginClick={() => setCurrentPage('login')} onSignupSuccess={handleSignupSuccess} />;
+    return <SignupScreen onLoginClick={() => setCurrentPage('login')} />;
   }
 
   // Show home screen when not authenticated

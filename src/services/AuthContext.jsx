@@ -39,8 +39,9 @@ export const AuthProvider = ({ children }) => {
       
       if (error) throw error
       
-      // Don't automatically log in after signup
-      // Return the user data without setting session/user state
+      // Automatically log in after signup
+      setSession(data.session)
+      setUser(data.user)
       return { data, error: null }
     } catch (error) {
       console.error('Sign up error:', error)

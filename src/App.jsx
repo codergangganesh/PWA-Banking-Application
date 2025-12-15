@@ -372,7 +372,7 @@ function AppContent() {
 
   const handleSignupSuccess = () => {
     console.log('Signup successful, setting page to dashboard');
-    setCurrentPage('dashboard');
+    setCurrentPage('LoginScreen');
   };
 
   const handleLogoutConfirmed = async () => {

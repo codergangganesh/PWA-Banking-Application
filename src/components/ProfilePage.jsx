@@ -14,6 +14,11 @@ const ProfilePage = ({ onBack, onThemeToggle, currentTheme, onProfileImageChange
   const [tempPhone, setTempPhone] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
+  
+  // Notification preferences state
+  const [emailNotifications, setEmailNotifications] = useState(true);
+  const [pushNotifications, setPushNotifications] = useState(false);
+  const [smsNotifications, setSmsNotifications] = useState(true);
 
   useEffect(() => {
     setNewProfileImage(profileImage);
@@ -99,6 +104,19 @@ const ProfilePage = ({ onBack, onThemeToggle, currentTheme, onProfileImageChange
       currency: 'INR',
       minimumFractionDigits: 2
     }).format(amount || 0);
+  };
+
+  // Toggle functions for notification preferences
+  const toggleEmailNotifications = () => {
+    setEmailNotifications(!emailNotifications);
+  };
+
+  const togglePushNotifications = () => {
+    setPushNotifications(!pushNotifications);
+  };
+
+  const toggleSmsNotifications = () => {
+    setSmsNotifications(!smsNotifications);
   };
 
   return (
@@ -255,6 +273,67 @@ const ProfilePage = ({ onBack, onThemeToggle, currentTheme, onProfileImageChange
                           }`}
                         />
                       </button>
+                    </div>
+                  </div>
+                  
+                  {/* Notification Preferences Section */}
+                  <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Notification Preferences</h3>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div>
+                          <h4 className="font-medium text-gray-900 dark:text-white">Email Notifications</h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">Receive email updates about your account</p>
+                        </div>
+                        <button 
+                          onClick={toggleEmailNotifications}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                            emailNotifications ? 'bg-indigo-600' : 'bg-gray-300'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              emailNotifications ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div>
+                          <h4 className="font-medium text-gray-900 dark:text-white">Push Notifications</h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">Get instant alerts on your device</p>
+                        </div>
+                        <button 
+                          onClick={togglePushNotifications}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                            pushNotifications ? 'bg-indigo-600' : 'bg-gray-300'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              pushNotifications ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div>
+                          <h4 className="font-medium text-gray-900 dark:text-white">SMS Alerts</h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">Receive text messages for important events</p>
+                        </div>
+                        <button 
+                          onClick={toggleSmsNotifications}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                            smsNotifications ? 'bg-indigo-600' : 'bg-gray-300'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              smsNotifications ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

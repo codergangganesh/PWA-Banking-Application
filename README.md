@@ -356,6 +356,17 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - GitHub: [@codergangganesh](https://github.com/codergangganesh)
 - LinkedIn: [codergangganesh](https://linkedin.com/in/codergangganesh)
 
+## 🔔 Instant Notifications
+
+The application now includes a real-time notification system that alerts users to important account activities:
+
+- Transaction confirmations
+- Bill payment reminders
+- Account security alerts
+- Balance threshold notifications
+
+Notifications are displayed as non-intrusive banners and can be configured in the user settings panel.
+
 ---
 
 Made with ❤️ using React, Vite, and Supabase

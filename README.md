@@ -367,6 +367,16 @@ The application now includes a real-time notification system that alerts users t
 
 Notifications are displayed as non-intrusive banners and can be configured in the user settings panel.
 
+## ⚙️ Notification Preferences
+
+Users can customize their notification preferences through the profile settings:
+
+- **Email Notifications**: Receive account updates via email
+- **Push Notifications**: Get instant alerts directly on your device
+- **SMS Alerts**: Receive text messages for critical account events
+
+Each notification type can be individually toggled on or off based on user preferences, providing granular control over communication channels.
+
 ---
 
 Made with ❤️ using React, Vite, and Supabase

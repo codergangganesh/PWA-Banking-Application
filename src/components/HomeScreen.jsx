@@ -16,14 +16,14 @@ const HomeScreen = ({ onLogin, onRegister }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-900">
+    <div className="min-h-screen bg-gradient-to-b from-primary-50 to-primary-100 dark:from-gray-900 dark:to-gray-900">
       {/* Header */}
-      <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
+      <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-primary-200 dark:border-gray-700 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
             <div className="flex items-center">
               <div className="flex-shrink-0 flex items-center">
-                <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-lg flex items-center justify-center">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -81,7 +81,7 @@ const HomeScreen = ({ onLogin, onRegister }) => {
       </header>
 
       {/* Hero Section */}
-      <div className="relative bg-gradient-to-r from-indigo-600 to-purple-600 overflow-hidden">
+      <div className="relative bg-gradient-to-r from-primary-500 to-secondary-500 overflow-hidden">
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="relative z-10 pb-8 bg-transparent sm:pb-16 md:pb-20 lg:max-w-2xl lg:w-full lg:pb-28 xl:pb-32">
@@ -94,13 +94,13 @@ const HomeScreen = ({ onLogin, onRegister }) => {
                   className="text-4xl tracking-tight font-extrabold text-white sm:text-5xl md:text-6xl"
                 >
                   <span className="block">Secure Banking</span>
-                  <span className="block text-indigo-200">Made Simple</span>
+                  <span className="block text-primary-100">Made Simple</span>
                 </motion.h1>
                 <motion.p
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2, duration: 0.5 }}
-                  className="mt-3 text-base text-indigo-100 sm:mt-5 sm:text-lg sm:max-w-xl sm:mx-auto md:mt-5 md:text-xl lg:mx-0"
+                  className="mt-3 text-base text-primary-100 sm:mt-5 sm:text-lg sm:max-w-xl sm:mx-auto md:mt-5 md:text-xl lg:mx-0"
                 >
                   Manage your finances with confidence using our secure, offline-first banking application. 
                   All your data stays private and under your control.
@@ -108,13 +108,13 @@ const HomeScreen = ({ onLogin, onRegister }) => {
                 <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row sm:justify-center lg:justify-start gap-3">
                   <button
                     onClick={onRegister}
-                    className="px-8 py-3 border border-transparent text-base font-medium rounded-xl text-indigo-600 bg-white hover:bg-gray-50 md:py-4 md:text-lg md:px-10 transition duration-300 transform hover:-translate-y-0.5 shadow-lg"
+                    className="px-8 py-3 border border-transparent text-base font-medium rounded-xl text-primary-600 bg-white hover:bg-primary-50 md:py-4 md:text-lg md:px-10 transition duration-300 transform hover:-translate-y-0.5 shadow-lg"
                   >
                     Get Started
                   </button>
                   <button
                     onClick={onLogin}
-                    className="px-8 py-3 border border-white/30 text-base font-medium rounded-xl text-white bg-white/10 hover:bg-white/20 md:py-4 md:text-lg md:px-10 transition duration-300"
+                    className="px-8 py-3 border border-white/30 text-base font-medium rounded-xl text-white bg-white/10 hover:bg-primary-100/20 md:py-4 md:text-lg md:px-10 transition duration-300"
                   >
                     Sign In
                   </button>
@@ -131,13 +131,13 @@ const HomeScreen = ({ onLogin, onRegister }) => {
             className="w-full max-w-md"
           >
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 shadow-xl">
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-100 dark:border-gray-700">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-primary-200 dark:border-gray-700">
                 <div className="flex justify-between items-start">
                   <div>
                     <div className="text-gray-500 text-sm font-medium">Current Balance</div>
                     <div className="text-3xl font-bold mt-1 text-gray-900 dark:text-white">₹0.00</div>
                   </div>
-                  <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full p-2">
+                  <div className="bg-gradient-to-br from-primary-500 to-secondary-500 rounded-full p-2">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                     </svg>
@@ -149,7 +149,7 @@ const HomeScreen = ({ onLogin, onRegister }) => {
                     <div className="font-medium text-gray-900 dark:text-white">**** **** **** 1234</div>
                   </div>
                   <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                    <button className="w-full py-2 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium rounded-lg transition duration-300">
+                    <button className="w-full py-2 px-4 bg-gradient-to-r from-primary-500 to-secondary-500 hover:from-primary-600 hover:to-secondary-600 text-white font-medium rounded-lg transition duration-300">
                       View Details
                     </button>
                   </div>
@@ -161,7 +161,7 @@ const HomeScreen = ({ onLogin, onRegister }) => {
       </div>
 
       {/* Quick Actions Section */}
-      <div className="py-8 bg-gray-50 dark:bg-gray-800">
+      <div className="py-8 bg-primary-50 dark:bg-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Quick Actions</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -175,7 +175,7 @@ const HomeScreen = ({ onLogin, onRegister }) => {
                 className="bg-white dark:bg-gray-700 rounded-xl shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow"
               >
                 <div className="flex flex-col items-center text-center">
-                  <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white mb-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-full flex items-center justify-center text-white mb-3">
                     {action.icon}
                   </div>
                   <h3 className="font-medium text-gray-900 dark:text-white text-sm">{action.name}</h3>
@@ -187,7 +187,7 @@ const HomeScreen = ({ onLogin, onRegister }) => {
       </div>
 
       {/* Features Section */}
-      <div className="py-16 bg-white dark:bg-gray-900">
+      <div className="py-16 bg-primary-50 dark:bg-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="lg:text-center mb-16">
             <motion.h2
@@ -195,7 +195,7 @@ const HomeScreen = ({ onLogin, onRegister }) => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
-              className="text-base text-indigo-600 dark:text-indigo-400 font-semibold tracking-wide uppercase"
+              className="text-base text-primary-600 dark:text-primary-400 font-semibold tracking-wide uppercase"
             >
               Features
             </motion.h2>
@@ -232,7 +232,7 @@ const HomeScreen = ({ onLogin, onRegister }) => {
                 >
                   <div className="flex">
                     <div className="flex-shrink-0">
-                      <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white">
+                      <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-gradient-to-br from-primary-500 to-secondary-500 text-white">
                         {feature.icon}
                       </div>
                     </div>
@@ -251,11 +251,11 @@ const HomeScreen = ({ onLogin, onRegister }) => {
       </div>
 
       {/* Recent Transactions Section */}
-      <div className="py-16 bg-gray-50 dark:bg-gray-800">
+      <div className="py-16 bg-white dark:bg-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center mb-8">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Recent Transactions</h2>
-            <button className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
+            <button className="text-primary-600 dark:text-primary-400 hover:underline font-medium">
               View All
             </button>
           </div>
@@ -305,13 +305,13 @@ const HomeScreen = ({ onLogin, onRegister }) => {
       </div>
 
       {/* CTA Section */}
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-600">
+      <div className="bg-gradient-to-r from-primary-500 to-secondary-500">
         <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:py-16 lg:px-8 lg:flex lg:items-center lg:justify-between">
           <div className="lg:w-0 lg:flex-1">
             <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
               Ready to get started?
             </h2>
-            <p className="mt-3 max-w-3xl text-lg text-indigo-100">
+            <p className="mt-3 max-w-3xl text-lg text-primary-100">
               Join thousands of satisfied users who trust us with their financial management.
             </p>
           </div>
@@ -319,7 +319,7 @@ const HomeScreen = ({ onLogin, onRegister }) => {
             <div className="inline-flex rounded-md shadow">
               <button
                 onClick={onRegister}
-                className="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-indigo-600 bg-white hover:bg-indigo-50"
+                className="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-primary-600 bg-white hover:bg-primary-50"
               >
                 Create Account
               </button>
@@ -327,7 +327,7 @@ const HomeScreen = ({ onLogin, onRegister }) => {
             <div className="ml-3 inline-flex rounded-md shadow">
               <button
                 onClick={onLogin}
-                className="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-500 bg-opacity-60 hover:bg-opacity-70"
+                className="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary-500 bg-opacity-60 hover:bg-opacity-70"
               >
                 Sign In
               </button>

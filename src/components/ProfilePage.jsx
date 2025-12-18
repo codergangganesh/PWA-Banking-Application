@@ -8,6 +8,7 @@ const ProfilePage = ({ onBack, onThemeToggle, currentTheme, onProfileImageChange
   const [name, setName] = useState(user?.user_metadata?.full_name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState('');
+  const [language, setLanguage] = useState('en'); // Added language state
   const [isEditing, setIsEditing] = useState(false);
   const [tempName, setTempName] = useState(user?.user_metadata?.full_name || '');
   const [tempEmail, setTempEmail] = useState(user?.email || '');
@@ -333,6 +334,25 @@ const ProfilePage = ({ onBack, onThemeToggle, currentTheme, onProfileImageChange
                             }`}
                           />
                         </button>
+                      </div>
+                      
+                      {/* Language Selector */}
+                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div>
+                          <h4 className="font-medium text-gray-900 dark:text-white">Language</h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">Select your preferred language</p>
+                        </div>
+                        <select
+                          value={language}
+                          onChange={(e) => setLanguage(e.target.value)}
+                          className="bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2"
+                        >
+                          <option value="en">English</option>
+                          <option value="es">Spanish</option>
+                          <option value="fr">French</option>
+                          <option value="de">German</option>
+                          <option value="hi">Hindi</option>
+                        </select>
                       </div>
                     </div>
                   </div>

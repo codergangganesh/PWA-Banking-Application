@@ -232,14 +232,23 @@ function AppContent() {
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const savedProfileImage = localStorage.getItem('profileImage');
-    const savedPhone = localStorage.getItem('phone'); // Get saved phone
     
+    // If user has a saved preference, use that
     if (savedTheme) {
       setTheme(savedTheme);
-    } else if (systemPrefersDark) {
+    } 
+    // Otherwise, use system preference
+    else if (systemPrefersDark) {
       setTheme('dark');
+    } 
+    // Default to light theme
+    else {
+      setTheme('light');
     }
+    
+    // Load other saved data
+    const savedProfileImage = localStorage.getItem('profileImage');
+    const savedPhone = localStorage.getItem('phone'); // Get saved phone
     
     if (savedProfileImage) {
       setProfileImage(savedProfileImage);
@@ -361,8 +370,13 @@ function AppContent() {
   };
 
   // Toggle theme
-  const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
+  const toggleTheme = (newTheme) => {
+    // If a specific theme is provided, use it; otherwise toggle
+    if (newTheme) {
+      setTheme(newTheme);
+    } else {
+      setTheme(theme === 'light' ? 'dark' : 'light');
+    }
   };
 
   const handleLoginSuccess = () => {
@@ -777,7 +791,7 @@ function AppContent() {
   };
 
   // UI Components for new features
-  const RecurringPaymentsPage = () => {
+  const RecurringPaymentsPage = ({ theme, toggleTheme }) => {
     const [showAddForm, setShowAddForm] = useState(false);
     const [newPayment, setNewPayment] = useState({
       amount: "",
@@ -809,7 +823,23 @@ function AppContent() {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold">Recurring Payments</h2>
-          <div>
+          <div className="flex space-x-2">
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              aria-label="Toggle theme"
+            >
+              {theme === 'dark' ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
+            </button>
             <button 
               onClick={() => setShowAddForm(!showAddForm)}
               className="px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
@@ -818,7 +848,7 @@ function AppContent() {
             </button>
             <button 
               onClick={() => setCurrentPage("dashboard")}
-              className="ml-2 px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 text-sm"
+              className="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 text-sm"
             >
               Back
             </button>
@@ -976,12 +1006,30 @@ function AppContent() {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold">Account Statement</h2>
-          <button 
-            onClick={() => setCurrentPage("dashboard")}
-            className="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 text-sm"
-          >
-            Back
-          </button>
+          <div className="flex space-x-2">
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              aria-label="Toggle theme"
+            >
+              {theme === 'dark' ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
+            </button>
+            <button 
+              onClick={() => setCurrentPage("dashboard")}
+              className="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 text-sm"
+            >
+              Back
+            </button>
+          </div>
         </div>
         <div className="flex justify-between items-center">
           <div className="space-y-1">
@@ -1177,7 +1225,7 @@ function AppContent() {
     );
   };
 
-  const DashboardPage = () => {
+  const DashboardPage = ({ theme, toggleTheme }) => {
     const totalIncome = transactions.reduce((acc, t) => acc + (t.type === "income" ? t.amount : 0), 0);
     const totalExpenses = transactions.reduce((acc, t) => acc + (t.type === "expense" ? t.amount : 0), 0);
     const balance = totalIncome + totalExpenses;
@@ -1186,12 +1234,30 @@ function AppContent() {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold">Dashboard</h2>
-          <button 
-            onClick={() => setCurrentPage("settings")}
-            className="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 text-sm"
-          >
-            Settings
-          </button>
+          <div className="flex space-x-2">
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              aria-label="Toggle theme"
+            >
+              {theme === 'dark' ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
+            </button>
+            <button 
+              onClick={() => setCurrentPage("settings")}
+              className="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 text-sm"
+            >
+              Settings
+            </button>
+          </div>
         </div>
         <div className="flex justify-between items-center">
           <div className="space-y-1">
@@ -1271,7 +1337,7 @@ function AppContent() {
       case 'signup':
         return <SignupScreen onSuccess={handleSignupSuccess} />;
       case 'dashboard':
-        return <DashboardPage />;
+        return <DashboardPage theme={theme} toggleTheme={toggleTheme} />;
       case 'settings':
         return <SettingsPage 
           theme={theme}
@@ -1282,9 +1348,9 @@ function AppContent() {
           setBalance={setBalance}
         />;
       case 'recurring':
-        return <RecurringPaymentsPage />;
+        return <RecurringPaymentsPage theme={theme} toggleTheme={toggleTheme} />;
       case 'bills':
-        return <BillRemindersPage />;
+        return <BillRemindersPage theme={theme} toggleTheme={toggleTheme} />;
       case 'statements':
         return <StatementsPage />;
       case 'profile':
@@ -1297,7 +1363,7 @@ function AppContent() {
     }
   };
   
-  const BillRemindersPage = () => {
+  const BillRemindersPage = ({ theme, toggleTheme }) => {
     const [showAddForm, setShowAddForm] = useState(false);
     const [newBill, setNewBill] = useState({
       description: "",
@@ -1332,7 +1398,23 @@ function AppContent() {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold">Bill Reminders</h2>
-          <div>
+          <div className="flex space-x-2">
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              aria-label="Toggle theme"
+            >
+              {theme === 'dark' ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
+            </button>
             <button 
               onClick={() => setShowAddForm(!showAddForm)}
               className="px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
@@ -1341,7 +1423,7 @@ function AppContent() {
             </button>
             <button 
               onClick={() => setCurrentPage("dashboard")}
-              className="ml-2 px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 text-sm"
+              className="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 text-sm"
             >
               Back
             </button>
@@ -1503,19 +1585,37 @@ function AppContent() {
     );
   };
   
-  const AccountStatementPage = () => {
+  const AccountStatementPage = ({ theme, toggleTheme }) => {
     const statement = generateStatement();
     
     return (
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold">Account Statement</h2>
-          <button 
-            onClick={() => setCurrentPage("dashboard")}
-            className="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 text-sm"
-          >
-            Back
-          </button>
+          <div className="flex space-x-2">
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              aria-label="Toggle theme"
+            >
+              {theme === 'dark' ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
+            </button>
+            <button 
+              onClick={() => setCurrentPage("dashboard")}
+              className="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 text-sm"
+            >
+              Back
+            </button>
+          </div>
         </div>
         
         <Card>
@@ -1795,9 +1895,9 @@ function AppContent() {
               />
             </div>
           )}
-          {currentPage === "recurringPayments" && user && <RecurringPaymentsPage />}
-          {currentPage === "billReminders" && user && <BillRemindersPage />}
-          {currentPage === "statements" && user && <AccountStatementPage />}
+          {currentPage === "recurringPayments" && user && <RecurringPaymentsPage theme={theme} toggleTheme={toggleTheme} />}
+          {currentPage === "billReminders" && user && <BillRemindersPage theme={theme} toggleTheme={toggleTheme} />}
+          {currentPage === "statements" && user && <AccountStatementPage theme={theme} toggleTheme={toggleTheme} />}
           {currentPage === "settings" && user && (
             <Settings
               user={user}

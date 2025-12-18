@@ -263,7 +263,7 @@ const ProfilePage = ({ onBack, onThemeToggle, currentTheme, onProfileImageChange
                         <p className="text-sm text-gray-600 dark:text-gray-400">Adjust appearance for low light</p>
                       </div>
                       <button
-                        onClick={onThemeToggle}
+                        onClick={() => onThemeToggle(currentTheme === 'dark' ? 'light' : 'dark')}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
                           currentTheme === 'dark' ? 'bg-indigo-600' : 'bg-gray-300'
                         }`}
@@ -428,7 +428,7 @@ const ProfilePage = ({ onBack, onThemeToggle, currentTheme, onProfileImageChange
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Theme Preference</label>
                       <select
                         value={currentTheme}
-                        onChange={(e) => onThemeToggle()}
+                        onChange={(e) => onThemeToggle(e.target.value)}
                         className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       >
                         <option value="light">Light Mode</option>

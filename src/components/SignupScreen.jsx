@@ -8,11 +8,41 @@ const SignupScreen = ({ onLoginClick, onSignupSuccess }) => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordStrength, setPasswordStrength] = useState(0) // Added password strength state
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showToast, setShowToast] = useState(false) // Added toast state
   const [toastMessage, setToastMessage] = useState('') // Added toast message state
   const { signUp } = useAuth()
+
+  // Password strength calculator
+  const calculatePasswordStrength = (password) => {
+    let strength = 0;
+    
+    // Length check
+    if (password.length >= 8) strength += 1;
+    
+    // Lowercase letter check
+    if (/[a-z]/.test(password)) strength += 1;
+    
+    // Uppercase letter check
+    if (/[A-Z]/.test(password)) strength += 1;
+    
+    // Number check
+    if (/\d/.test(password)) strength += 1;
+    
+    // Special character check
+    if (/[^A-Za-z0-9]/.test(password)) strength += 1;
+    
+    return strength;
+  };
+  
+  // Handle password change with strength calculation
+  const handlePasswordChange = (e) => {
+    const newPassword = e.target.value;
+    setPassword(newPassword);
+    setPasswordStrength(calculatePasswordStrength(newPassword));
+  };
 
   // Toast function
   const showToastMessage = (message) => {
@@ -168,13 +198,42 @@ const SignupScreen = ({ onLoginClick, onSignupSuccess }) => {
                   id="password"
                   type="password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={handlePasswordChange}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white transition duration-200"
                   placeholder="••••••••"
                   required
                 />
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">At least 6 characters</p>
+              {/* Password Strength Indicator */}
+              {password && (
+                <div className="mt-2">
+                  <div className="flex justify-between mb-1">
+                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Password Strength</span>
+                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                      {passwordStrength <= 2 ? 'Weak' : passwordStrength <= 4 ? 'Medium' : 'Strong'}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${
+                        passwordStrength <= 2 
+                          ? 'bg-red-500' 
+                          : passwordStrength <= 4 
+                            ? 'bg-yellow-500' 
+                            : 'bg-green-500'
+                      }`}
+                      style={{ width: `${(passwordStrength / 5) * 100}%` }}
+                    ></div>
+                  </div>
+                  <div className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                    {passwordStrength <= 2 
+                      ? 'Use at least 8 characters with uppercase, lowercase, number and special character' 
+                      : passwordStrength <= 4 
+                        ? 'Good, but could be stronger with more character types' 
+                        : 'Strong password!'}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>

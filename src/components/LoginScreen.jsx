@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 const LoginScreen = ({ onRegisterClick, onLoginSuccess }) => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(false) // Added remember me state
   const [loading, setLoading] = useState(false)
   const [oauthLoading, setOauthLoading] = useState(false)
   const [error, setError] = useState('')
@@ -90,7 +91,7 @@ const LoginScreen = ({ onRegisterClick, onLoginSuccess }) => {
           <div className="text-center mb-8">
             <div className="mx-auto w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Welcome Back</h2>
@@ -154,6 +155,19 @@ const LoginScreen = ({ onRegisterClick, onLoginSuccess }) => {
                   required
                 />
               </div>
+            </div>
+
+            <div className="flex items-center">
+              <input
+                id="remember-me"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+              />
+              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
+                Remember me
+              </label>
             </div>
 
             <button

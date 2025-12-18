@@ -336,6 +336,40 @@ const ProfilePage = ({ onBack, onThemeToggle, currentTheme, onProfileImageChange
                       </div>
                     </div>
                   </div>
+                  
+                  {/* Security Section */}
+                  <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Security</h3>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div>
+                          <h4 className="font-medium text-gray-900 dark:text-white">Two-Factor Authentication</h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">Add extra security to your account</p>
+                        </div>
+                        <button className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-300 transition-colors focus:outline-none">
+                          <span className="inline-block h-4 w-4 transform rounded-full bg-white translate-x-1 transition-transform" />
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div>
+                          <h4 className="font-medium text-gray-900 dark:text-white">Login Activity</h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">View your recent login sessions</p>
+                        </div>
+                        <button className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
+                          View
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div>
+                          <h4 className="font-medium text-gray-900 dark:text-white">Device Management</h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">Manage devices connected to your account</p>
+                        </div>
+                        <button className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
+                          Manage
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-6">

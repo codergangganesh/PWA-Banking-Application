@@ -2,12 +2,6 @@
 
 ## [Unreleased]
 
-### Features
-
-- Added contribution tracking tools
-- Implemented daily log tracker
-- Created Git workflow helpers
-
 ### Miscellaneous
 
 - new design for the home page looks professional. (9bf9c23)

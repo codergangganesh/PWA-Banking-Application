@@ -5,6 +5,15 @@ import { motion } from 'framer-motion'
 const HomeScreen = ({ onLogin, onRegister }) => {
   const { user } = useAuth()
 
+  // Format currency
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 2
+    }).format(amount || 0);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-900">
       {/* Header */}
@@ -223,6 +232,60 @@ const HomeScreen = ({ onLogin, onRegister }) => {
         </div>
       </div>
 
+      {/* Recent Transactions Section */}
+      <div className="py-16 bg-gray-50 dark:bg-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Recent Transactions</h2>
+            <button className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
+              View All
+            </button>
+          </div>
+          
+          <div className="bg-white dark:bg-gray-700 rounded-2xl shadow-sm overflow-hidden">
+            <ul className="divide-y divide-gray-200 dark:divide-gray-600">
+              {recentTransactions.map((transaction) => (
+                <li key={transaction.id} className="px-6 py-4">
+                  <div className="flex items-center">
+                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                      transaction.type === 'income' 
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                    }`}>
+                      {transaction.type === 'income' ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                    <div className="ml-4 flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">{transaction.description}</h3>
+                        <span className={`text-sm font-semibold ${
+                          transaction.type === 'income' 
+                            ? 'text-green-600 dark:text-green-400' 
+                            : 'text-red-600 dark:text-red-400'
+                        }`}>
+                          {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between mt-1">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{transaction.category}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{transaction.date}</p>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+
       {/* CTA Section */}
       <div className="bg-gradient-to-r from-indigo-600 to-purple-600">
         <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:py-16 lg:px-8 lg:flex lg:items-center lg:justify-between">
@@ -327,7 +390,7 @@ const quickActions = [
     name: 'Send Money',
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m-8 2v4m4-6v4m-4-6v4m-4-6v4m8-10v4m4-4v4m-4-4v4m-4-4v4m4-10a2 2 0 00-2 2v4a2 2 0 002 2m-6 2a2 2 0 002-2v4a2 2 0 00-2 2" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m-8 2v4m4-6v4m-4-6v4m-4-6v4m4-10v4m4-4v4m-4-4v4m-4-4v4m4-10a2 2 0 00-2 2v4a2 2 0 002 2m-6 2a2 2 0 002-2v4a2 2 0 00-2 2" />
       </svg>
     ),
   },
@@ -355,6 +418,49 @@ const quickActions = [
       </svg>
     ),
   },
+]
+
+const recentTransactions = [
+  {
+    id: 1,
+    description: 'Salary Deposit',
+    amount: 45000.00,
+    type: 'income',
+    category: 'Salary',
+    date: '2025-12-15'
+  },
+  {
+    id: 2,
+    description: 'Grocery Shopping',
+    amount: 2450.75,
+    type: 'expense',
+    category: 'Food',
+    date: '2025-12-14'
+  },
+  {
+    id: 3,
+    description: 'Electricity Bill',
+    amount: 1850.00,
+    type: 'expense',
+    category: 'Utilities',
+    date: '2025-12-12'
+  },
+  {
+    id: 4,
+    description: 'Freelance Work',
+    amount: 15000.00,
+    type: 'income',
+    category: 'Business',
+    date: '2025-12-10'
+  },
+  {
+    id: 5,
+    description: 'Car Maintenance',
+    amount: 8750.50,
+    type: 'expense',
+    category: 'Transport',
+    date: '2025-12-08'
+  }
 ]
 
 export default HomeScreen

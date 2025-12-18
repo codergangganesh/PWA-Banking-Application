@@ -1030,7 +1030,7 @@ function AppContent() {
     );
   };
 
-  const SettingsPage = () => {
+  const SettingsPage = ({ theme, setTheme, profileImage, setProfileImage, balance, setBalance }) => {
     const [newTheme, setNewTheme] = useState(theme);
     const [newProfileImage, setNewProfileImage] = useState(profileImage);
     const [newBalance, setNewBalance] = useState(balance);
@@ -1039,7 +1039,9 @@ function AppContent() {
     const [showLogout, setShowLogout] = useState(false);
 
     const handleThemeChange = (e) => {
-      setNewTheme(e.target.value);
+      const selectedTheme = e.target.value;
+      setNewTheme(selectedTheme);
+      setTheme(selectedTheme);
     };
 
     const handleProfileImageChange = (e) => {
@@ -1047,14 +1049,18 @@ function AppContent() {
       if (file) {
         const reader = new FileReader();
         reader.onloadend = () => {
-          setNewProfileImage(reader.result);
+          const imageData = reader.result;
+          setNewProfileImage(imageData);
+          setProfileImage(imageData);
         };
         reader.readAsDataURL(file);
       }
     };
 
     const handleBalanceChange = (e) => {
-      setNewBalance(e.target.value);
+      const balanceValue = e.target.value;
+      setNewBalance(balanceValue);
+      setBalance(balanceValue);
     };
 
     const handleDeleteConfirmed = async () => {
@@ -1259,7 +1265,7 @@ function AppContent() {
       case 'splash':
         return <SplashScreen onComplete={() => setSplashComplete(true)} />;
       case 'home':
-        return <HomeScreen onLogin={() => setCurrentPage('login')} onSignup={() => setCurrentPage('signup')} />;
+        return <HomeScreen onLogin={() => setCurrentPage('login')} onSignup={() => setCurrentPage('signup')} theme={theme} toggleTheme={toggleTheme} />;
       case 'login':
         return <LoginScreen onSuccess={handleLoginSuccess} />;
       case 'signup':
@@ -1267,7 +1273,14 @@ function AppContent() {
       case 'dashboard':
         return <DashboardPage />;
       case 'settings':
-        return <SettingsPage />;
+        return <SettingsPage 
+          theme={theme}
+          setTheme={setTheme}
+          profileImage={profileImage}
+          setProfileImage={setProfileImage}
+          balance={balance}
+          setBalance={setBalance}
+        />;
       case 'recurring':
         return <RecurringPaymentsPage />;
       case 'bills':
@@ -1275,7 +1288,10 @@ function AppContent() {
       case 'statements':
         return <StatementsPage />;
       case 'profile':
-        return <ProfilePage />;
+        return <ProfilePage 
+          onThemeToggle={toggleTheme}
+          currentTheme={theme}
+        />;
       default:
         return <div>404 Not Found</div>;
     }

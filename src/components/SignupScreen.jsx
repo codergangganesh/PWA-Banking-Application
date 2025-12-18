@@ -1,7 +1,8 @@
- import React, { useState } from 'react'
+import React, { useState } from 'react'
 import { useAuth } from '../services/AuthContext'
 import { supabase } from '../services/supabaseClient'
 import { motion } from 'framer-motion'
+import LoadingSpinner from './LoadingSpinner' // Added import
 
 const SignupScreen = ({ onLoginClick, onSignupSuccess }) => {
   const [name, setName] = useState('')

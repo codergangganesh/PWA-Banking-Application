@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useAuth } from '../services/AuthContext'
 import { motion } from 'framer-motion'
+import LoadingSpinner from './LoadingSpinner' // Added import
 
 const LoginScreen = ({ onRegisterClick, onLoginSuccess }) => {
   const [email, setEmail] = useState('')
@@ -177,8 +178,8 @@ const LoginScreen = ({ onRegisterClick, onLoginSuccess }) => {
             >
               {loading ? (
                 <div className="flex items-center justify-center">
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
-                  Signing in...
+                  <LoadingSpinner size="sm" color="white" />
+                  <span className="ml-2">Signing in...</span>
                 </div>
               ) : (
                 'Sign In'
@@ -206,8 +207,8 @@ const LoginScreen = ({ onRegisterClick, onLoginSuccess }) => {
               >
                 {oauthLoading ? (
                   <div className="flex items-center justify-center">
-                    <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-700 dark:border-gray-600 dark:border-t-gray-300 rounded-full animate-spin mr-2"></div>
-                    Signing in...
+                    <LoadingSpinner size="sm" color="gray" />
+                    <span className="ml-2">Signing in...</span>
                   </div>
                 ) : (
                   <>
